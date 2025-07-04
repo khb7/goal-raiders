@@ -2,14 +2,14 @@
 import React from 'react';
 import './Boss.css';
 
-const Boss = ({ bossName, currentHp, maxHp, takingDamage }) => {
+const Boss = ({ bossName, currentHp, maxHp, takingDamage, isDefeated }) => {
   const hpPercentage = (currentHp / maxHp) * 100;
 
   return (
     <div className="boss-container text-center card mb-4">
         <div className="card-body">
             <h2 className="card-title">{bossName}</h2>
-            <div className={`boss-image-container ${takingDamage ? 'shake' : ''}`}>
+            <div className={`boss-image-container ${takingDamage ? 'shake' : ''} ${isDefeated ? 'rotate-90' : ''}`}>
                 <svg className="boss-svg" viewBox="0 0 100 100">
                     {/* Body */}
                     <circle cx="50" cy="60" r="30" fill="#388E3C" />

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import { Modal, Button, Form } from 'react-bootstrap'; // Import Modal, Button, Form
 import Auth from './components/Auth'; // Auth 컴포넌트 import
 import Boss from './Boss';
 
@@ -16,12 +17,21 @@ function App() {
   const [takingDamage, setTakingDamage] = useState(false);
   const [userId, setUserId] = useState(''); // User ID for data persistence
   const [editingTaskId, setEditingTaskId] = useState(null); // State to hold the ID of the task being edited
+  const [showBossSettingsModal, setShowBossSettingsModal] = useState(false); // State for modal visibility
+  const [selectedBossDifficulty, setSelectedBossDifficulty] = useState('Medium'); // New state for boss difficulty
 
   const DIFFICULTY_DAMAGE_MAP = {
     Easy: 5,
     Medium: 10,
     Hard: 20,
     Epic: 50,
+  };
+
+  const BOSS_HP_MAP = {
+    Easy: 50,
+    Medium: 100,
+    Hard: 200,
+    Epic: 500,
   };
 
   const currentBoss = currentBossId ? bosses.find(boss => boss.id === currentBossId) : null;
@@ -208,17 +218,20 @@ function App() {
   }
 
   const addBoss = () => {
-    if (newBossName && newBossHp > 0) {
+    if (newBossName) {
+      const finalBossHp = newBossHp > 0 && newBossHp !== 100 ? parseInt(newBossHp) : BOSS_HP_MAP[selectedBossDifficulty];
       const newBoss = {
         id: Date.now(),
         name: newBossName,
-        maxHp: parseInt(newBossHp),
-        currentHp: parseInt(newBossHp),
+        maxHp: finalBossHp,
+        currentHp: finalBossHp,
       };
       setBosses([...bosses, newBoss]);
       setCurrentBossId(newBoss.id);
       setNewBossName('');
-      setNewBossHp(100);
+      setNewBossHp(100); // Reset to default for next time
+      setSelectedBossDifficulty('Medium'); // Reset to default
+      setShowBossSettingsModal(false); // Close modal after adding boss
     }
   };
 
@@ -227,8 +240,8 @@ function App() {
           <div className="container text-center mt-5">
               <h1 className="display-1 text-success">VICTORY!</h1>
               <p className="lead">You have defeated the {currentBoss.name}!</p>
-              <div style={{transform: 'rotate(90deg)'}}>
-                <Boss bossName={currentBoss.name} currentHp={0} maxHp={currentBoss.maxHp} takingDamage={false} />
+              <div>
+                <Boss bossName={currentBoss.name} currentHp={0} maxHp={currentBoss.maxHp} takingDamage={false} isDefeated={true} />
               </div>
               <button className="btn btn-primary mt-3" onClick={resetGame}>
                   Start a New Challenge
@@ -333,26 +346,63 @@ function App() {
         {/* Main Content */}
         <div className="col-md-6 main-content-container">
           <div className="mb-4">
-              <label htmlFor="newBossNameInput" className="form-label">New Boss Name:</label>
-              <input
-                  type="text"
-                  id="newBossNameInput"
-                  className="form-control"
-                  value={newBossName}
-                  onChange={(e) => setNewBossName(e.target.value)}
-                  placeholder="Enter new boss name"
-              />
-              <label htmlFor="newBossHpInput" className="form-label">New Boss Max HP:</label>
-              <input
-                  type="number"
-                  id="newBossHpInput"
-                  className="form-control"
-                  value={newBossHp}
-                  onChange={(e) => setNewBossHp(e.target.value)}
-                  placeholder="Enter new boss HP"
-              />
-              <button className="btn btn-primary mt-2" onClick={addBoss}>Add New Boss</button>
+              <Button variant="primary" onClick={() => setShowBossSettingsModal(true)}>
+                  Boss Settings
+              </Button>
           </div>
+
+          <Modal show={showBossSettingsModal} onHide={() => setShowBossSettingsModal(false)}>
+              <Modal.Header closeButton>
+                  <Modal.Title>Boss Settings</Modal.Title>
+              </Modal.Header>
+              <Modal.Body>
+                  <Form>
+                      <Form.Group className="mb-3">
+                          <Form.Label htmlFor="newBossNameInput">New Boss Name:</Form.Label>
+                          <Form.Control
+                              type="text"
+                              id="newBossNameInput"
+                              value={newBossName}
+                              onChange={(e) => setNewBossName(e.target.value)}
+                              placeholder="Enter new boss name"
+                          />
+                      </Form.Group>
+                      <Form.Group className="mb-3">
+                          <Form.Label htmlFor="newBossHpInput">New Boss Max HP:</Form.Label>
+                          <Form.Control
+                              type="number"
+                              id="newBossHpInput"
+                              value={newBossHp}
+                              onChange={(e) => setNewBossHp(e.target.value)}
+                              placeholder="Enter new boss HP (optional)"
+                          />
+                          <Form.Text className="text-muted">
+                              Leave blank to use HP based on selected difficulty.
+                          </Form.Text>
+                      </Form.Group>
+                      <Form.Group className="mb-3">
+                          <Form.Label htmlFor="bossDifficultySelect">Boss Difficulty:</Form.Label>
+                          <Form.Select
+                              id="bossDifficultySelect"
+                              value={selectedBossDifficulty}
+                              onChange={(e) => setSelectedBossDifficulty(e.target.value)}
+                          >
+                              {Object.keys(DIFFICULTY_DAMAGE_MAP).map(difficulty => (
+                                  <option key={difficulty} value={difficulty}>{difficulty}</option>
+                              ))}
+                          </Form.Select>
+                      </Form.Group>
+                  </Form>
+              </Modal.Body>
+              <Modal.Footer>
+                  <Button variant="secondary" onClick={() => setShowBossSettingsModal(false)}>
+                      Cancel
+                  </Button>
+                  <Button variant="primary" onClick={addBoss}>
+                      Add Boss
+                  </Button>
+              </Modal.Footer>
+          </Modal>
 
           <div className="mb-4">
               <label htmlFor="selectBoss" className="form-label">Select Boss:</label>
