@@ -1,8 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Modal, Button, Form } from 'react-bootstrap'; // Import Modal, Button, Form
-import Auth from './components/Auth'; // Auth 컴포넌트 import
+
 import Boss from './Boss';
+
+import { auth, db } from './index'; // auth, db 객체 import
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { collection, addDoc, getDocs, updateDoc, doc, deleteDoc, query, where } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
 
 function App() {
   const [bosses, setBosses] = useState([]);
@@ -19,6 +24,21 @@ function App() {
   const [editingTaskId, setEditingTaskId] = useState(null); // State to hold the ID of the task being edited
   const [showBossSettingsModal, setShowBossSettingsModal] = useState(false); // State for modal visibility
   const [selectedBossDifficulty, setSelectedBossDifficulty] = useState('Medium'); // New state for boss difficulty
+  const [user, setUser] = useState(null); // User state for login status
+  const navigate = useNavigate();
+
+  // Listen for authentication state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        setUserId(currentUser.uid); // Set userId when user is logged in
+      } else {
+        setUserId(''); // Clear userId when user is logged out
+      }
+    });
+    return () => unsubscribe(); // Cleanup subscription on unmount
+  }, []);
 
   const DIFFICULTY_DAMAGE_MAP = {
     Easy: 5,
@@ -37,34 +57,51 @@ function App() {
   const currentBoss = currentBossId ? bosses.find(boss => boss.id === currentBossId) : null;
   const isVictory = currentBoss && currentBoss.currentHp <= 0;
 
-  const saveTask = () => {
-    if (task && currentBossId) {
+  const saveTask = async () => {
+    if (task && currentBossId && userId) { // Ensure userId is available
       if (editingTaskId) {
-        // Update existing task
-        setTasks(tasks.map(t => 
-          t.id === editingTaskId
-            ? { 
-                ...t, 
-                name: task, 
-                recurrenceDays: parseInt(recurrenceDays), 
-                difficulty: selectedDifficulty,
-                parentId: selectedParentTask || null,
-              }
-            : t
-        ));
-        setEditingTaskId(null);
+        // Update existing task in Firestore
+        try {
+          const taskRef = doc(db, "tasks", editingTaskId);
+          await updateDoc(taskRef, {
+            name: task,
+            recurrenceDays: parseInt(recurrenceDays),
+            difficulty: selectedDifficulty,
+            parentId: selectedParentTask || null,
+          });
+          setTasks(tasks.map(t => 
+            t.id === editingTaskId
+              ? { 
+                  ...t, 
+                  name: task, 
+                  recurrenceDays: parseInt(recurrenceDays), 
+                  difficulty: selectedDifficulty,
+                  parentId: selectedParentTask || null,
+                }
+              : t
+          ));
+          setEditingTaskId(null);
+        } catch (error) {
+          console.error("Error updating task in Firestore:", error);
+        }
       } else {
-        // Add new task
-        setTasks([...tasks, { 
-          id: Date.now(), // Unique ID for each task
-          name: task, 
-          completed: false, 
-          recurrenceDays: parseInt(recurrenceDays), 
-          lastCompleted: null, 
+        // Add new task to Firestore
+        const newTaskData = {
+          name: task,
+          completed: false,
+          recurrenceDays: parseInt(recurrenceDays),
+          lastCompleted: null,
           difficulty: selectedDifficulty,
           parentId: selectedParentTask || null,
-          bossId: currentBossId, // Associate task with current boss
-        }]);
+          bossId: currentBossId,
+          userId: userId, // Associate task with the current user
+        };
+        try {
+          const docRef = await addDoc(collection(db, "tasks"), newTaskData);
+          setTasks([...tasks, { id: docRef.id, ...newTaskData }]);
+        } catch (error) {
+          console.error("Error adding task to Firestore:", error);
+        }
       }
       setTask('');
       setRecurrenceDays(0);
@@ -73,18 +110,29 @@ function App() {
     }
   };
 
-  const toggleTask = (id) => {
+  const toggleTask = async (id) => {
     const taskIndex = tasks.findIndex(t => t.id === id);
     if (taskIndex === -1) return;
 
     const newTasks = [...tasks];
     if (!newTasks[taskIndex].completed) {
         setTakingDamage(true);
-        setBosses(prevBosses => prevBosses.map(boss => 
+        const damage = DIFFICULTY_DAMAGE_MAP[newTasks[taskIndex].difficulty];
+        const updatedBosses = bosses.map(boss => 
             boss.id === currentBossId 
-            ? { ...boss, currentHp: boss.currentHp - DIFFICULTY_DAMAGE_MAP[newTasks[taskIndex].difficulty] } 
+            ? { ...boss, currentHp: boss.currentHp - damage } 
             : boss
-        ));
+        );
+        setBosses(updatedBosses);
+
+        // Update boss HP in Firestore
+        try {
+          const bossRef = doc(db, "bosses", currentBossId);
+          await updateDoc(bossRef, { currentHp: updatedBosses.find(b => b.id === currentBossId).currentHp });
+        } catch (error) {
+          console.error("Error updating boss HP in Firestore:", error);
+        }
+
         newTasks[taskIndex].completed = true;
         newTasks[taskIndex].lastCompleted = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
         setTimeout(() => setTakingDamage(false), 500); 
@@ -96,7 +144,7 @@ function App() {
     setTasks(newTasks);
   };
 
-  const editTask = (id) => {
+  const editTask = async (id) => {
     const taskToEdit = tasks.find(t => t.id === id);
     if (taskToEdit) {
       setTask(taskToEdit.name);
@@ -107,7 +155,7 @@ function App() {
     }
   };
 
-  const deleteTask = (id) => {
+  const deleteTask = async (id) => {
     const tasksToDelete = [id];
     const findChildren = (parentId) => {
       tasks.forEach(t => {
@@ -119,45 +167,43 @@ function App() {
     };
     findChildren(id);
 
-    setTasks(tasks.filter(t => !tasksToDelete.includes(t.id)));
-  };
-
-  const loadData = () => {
-    if (userId) {
-      const savedBosses = localStorage.getItem(`bosses_${userId}`);
-      const savedTasks = localStorage.getItem(`tasks_${userId}`);
-      if (savedBosses) {
-        setBosses(JSON.parse(savedBosses));
-      }
-      if (savedTasks) {
-        setTasks(JSON.parse(savedTasks));
-      }
+    // Delete tasks from Firestore
+    try {
+      const deletePromises = tasksToDelete.map(taskId => deleteDoc(doc(db, "tasks", taskId)));
+      await Promise.all(deletePromises);
+      setTasks(tasks.filter(t => !tasksToDelete.includes(t.id)));
+    } catch (error) {
+      console.error("Error deleting tasks from Firestore:", error);
     }
   };
 
-  const saveData = () => {
+  const loadData = async () => {
     if (userId) {
-      localStorage.setItem(`bosses_${userId}`, JSON.stringify(bosses));
-      localStorage.setItem(`tasks_${userId}`, JSON.stringify(tasks));
+      // Load bosses from Firestore
+      const bossesCollectionRef = collection(db, "bosses");
+      const q = query(bossesCollectionRef, where("userId", "==", userId));
+      const querySnapshot = await getDocs(q);
+      const fetchedBosses = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setBosses(fetchedBosses);
+
+      // Load tasks from Firestore (assuming tasks are also user-specific)
+      const tasksCollectionRef = collection(db, "tasks");
+      const tasksQuery = query(tasksCollectionRef, where("userId", "==", userId));
+      const tasksSnapshot = await getDocs(tasksQuery);
+      const fetchedTasks = tasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setTasks(fetchedTasks);
     }
   };
+
+  
+
+  
 
   useEffect(() => {
     if ("Notification" in window) {
       Notification.requestPermission();
     }
-    // Load data when userId changes or on initial mount if userId is already set
-    if (userId) {
-      loadData();
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    // Save data whenever bosses or tasks change, but only if userId is set
-    if (userId) {
-      saveData();
-    }
-  }, [bosses, tasks, userId]);
+  }, []);
 
   useEffect(() => {
     const checkRecurrence = () => {
@@ -204,7 +250,23 @@ function App() {
     });
   }, [tasks]);
 
-  const resetGame = () => {
+  const resetGame = async () => {
+    // Delete all bosses for the current user from Firestore
+    if (userId) {
+      const bossesCollectionRef = collection(db, "bosses");
+      const q = query(bossesCollectionRef, where("userId", "==", userId));
+      const querySnapshot = await getDocs(q);
+      const deletePromises = querySnapshot.docs.map(docToDelete => deleteDoc(doc(db, "bosses", docToDelete.id)));
+      await Promise.all(deletePromises);
+
+      // Delete all tasks for the current user from Firestore
+      const tasksCollectionRef = collection(db, "tasks");
+      const tasksQuery = query(tasksCollectionRef, where("userId", "==", userId));
+      const tasksSnapshot = await getDocs(tasksQuery);
+      const deleteTasksPromises = tasksSnapshot.docs.map(docToDelete => deleteDoc(doc(db, "tasks", docToDelete.id)));
+      await Promise.all(deleteTasksPromises);
+    }
+
     setBosses([]);
     setCurrentBossId(null);
     setNewBossName('');
@@ -217,21 +279,45 @@ function App() {
     setEditingTaskId(null); // Clear editing task ID
   }
 
-  const addBoss = () => {
-    if (newBossName) {
-      const finalBossHp = newBossHp > 0 && newBossHp !== 100 ? parseInt(newBossHp) : BOSS_HP_MAP[selectedBossDifficulty];
-      const newBoss = {
-        id: Date.now(),
-        name: newBossName,
-        maxHp: finalBossHp,
-        currentHp: finalBossHp,
-      };
-      setBosses([...bosses, newBoss]);
-      setCurrentBossId(newBoss.id);
+  const handleSignOut = useCallback(async () => {
+    try {
+      await signOut(auth);
+      alert('로그아웃 성공!');
+      navigate('/auth'); // Redirect to auth page after logout
+    } catch (err) {
+      console.error('로그아웃 오류:', err);
+    }
+  }, [navigate]);
+
+  const addBoss = async () => {
+    if (!newBossName) {
+      alert('보스 이름을 입력해주세요.');
+      return;
+    }
+    if (!userId) {
+      alert('로그인 후 보스를 추가할 수 있습니다.');
+      return;
+    }
+
+    const finalBossHp = newBossHp > 0 && newBossHp !== 100 ? parseInt(newBossHp) : BOSS_HP_MAP[selectedBossDifficulty];
+    const newBossData = {
+      name: newBossName,
+      maxHp: finalBossHp,
+      currentHp: finalBossHp,
+      userId: userId, // Associate boss with the current user
+    };
+
+    try {
+      const docRef = await addDoc(collection(db, "bosses"), newBossData);
+      const addedBoss = { id: docRef.id, ...newBossData };
+      setBosses([...bosses, addedBoss]);
+      setCurrentBossId(addedBoss.id);
       setNewBossName('');
       setNewBossHp(100); // Reset to default for next time
       setSelectedBossDifficulty('Medium'); // Reset to default
       setShowBossSettingsModal(false); // Close modal after adding boss
+    } catch (e) {
+      console.error("Error adding document: ", e);
     }
   };
 
@@ -297,7 +383,16 @@ function App() {
       <div className="row mb-3">
         <div className="col-md-12 p-3 d-flex justify-content-between align-items-center">
           <h1 className="h3 mb-0">Goal Raiders</h1>
-          <Auth /> {/* Auth 컴포넌트 렌더링 */}
+          <div>
+            {user ? (
+              <>
+                <span className="me-2">Welcome, {user.email}</span>
+                <button className="btn btn-outline-secondary btn-sm" onClick={handleSignOut}>Logout</button>
+              </>
+            ) : (
+              <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/auth')}>Login / Sign Up</button>
+            )}
+          </div>
           {currentBoss && (
             <div className="d-flex align-items-center">
               <span className="me-2">Current Boss: <strong>{currentBoss.name}</strong></span>

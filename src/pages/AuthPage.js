@@ -7,20 +7,25 @@ import {
   signOut
 } from 'firebase/auth';
 import { auth } from '../index'; // auth 객체 import
+import { useNavigate } from 'react-router-dom'; // useNavigate import
 
-const Auth = () => {
+const AuthPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [user, setUser] = useState(null); // 현재 로그인된 사용자 정보
+  const navigate = useNavigate(); // useNavigate 훅 사용
 
   // 사용자 상태 변화 감지
   useEffect(() => { // useState -> useEffect로 변경
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        navigate('/'); // 로그인 성공 시 대시보드 페이지로 리다이렉트
+      }
     });
     return () => unsubscribe(); // 컴포넌트 언마운트 시 구독 해제
-  }, []);
+  }, [navigate]);
 
   const handleSignUp = async () => {
     setError('');
@@ -95,4 +100,4 @@ const Auth = () => {
   );
 };
 
-export default Auth;
+export default AuthPage;

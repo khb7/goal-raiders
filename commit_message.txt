@@ -1,0 +1,7 @@
+feat: Integrate Firebase authentication and Firestore for boss and task management
+
+- Refactor authentication logic to use react-router-dom for navigation to AuthPage.
+- Implement Firebase onAuthStateChanged listener in App.js to manage user state.
+- Add basic validation and alerts for new boss creation in App.js.
+- Migrate task and boss data persistence from local storage to Firestore.
+- Remove deprecated Auth.js component.
