@@ -4,9 +4,10 @@ import { Modal, Button, Form } from 'react-bootstrap'; // Import Modal, Button, 
 
 import Boss from './Boss';
 
-import { auth, db } from './index'; // auth, db 객체 import
+import { auth, db, functions } from './index'; // auth, db, functions 객체 import
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { collection, addDoc, getDocs, updateDoc, doc, deleteDoc, query, where } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { useNavigate } from 'react-router-dom';
 
 function App() {
@@ -110,38 +111,56 @@ function App() {
     }
   };
 
+  // Cloud Function 호출을 위한 callable 함수 정의
+  const callCompleteTask = httpsCallable(functions, 'completeTask');
+
   const toggleTask = async (id) => {
     const taskIndex = tasks.findIndex(t => t.id === id);
     if (taskIndex === -1) return;
 
-    const newTasks = [...tasks];
-    if (!newTasks[taskIndex].completed) {
-        setTakingDamage(true);
-        const damage = DIFFICULTY_DAMAGE_MAP[newTasks[taskIndex].difficulty];
-        const updatedBosses = bosses.map(boss => 
-            boss.id === currentBossId 
-            ? { ...boss, currentHp: boss.currentHp - damage } 
-            : boss
-        );
-        setBosses(updatedBosses);
+    const taskToToggle = tasks[taskIndex];
 
-        // Update boss HP in Firestore
-        try {
-          const bossRef = doc(db, "bosses", currentBossId);
-          await updateDoc(bossRef, { currentHp: updatedBosses.find(b => b.id === currentBossId).currentHp });
-        } catch (error) {
-          console.error("Error updating boss HP in Firestore:", error);
-        }
-
-        newTasks[taskIndex].completed = true;
-        newTasks[taskIndex].lastCompleted = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-        setTimeout(() => setTakingDamage(false), 500); 
-    } else {
-        // If uncompleting a task, allow it to be re-completed
-        newTasks[taskIndex].completed = false;
-        newTasks[taskIndex].lastCompleted = null; // Reset last completed date
+    // 이미 완료된 태스크를 다시 미완료로 되돌리는 로직 (클라이언트에서 처리)
+    if (taskToToggle.completed) {
+      const newTasks = [...tasks];
+      newTasks[taskIndex].completed = false;
+      newTasks[taskIndex].lastCompleted = null; // Reset last completed date
+      setTasks(newTasks);
+      // TODO: 필요하다면 서버에 태스크 미완료 상태를 알리는 함수 추가
+      return;
     }
-    setTasks(newTasks);
+
+    // 태스크 완료 및 보스 데미지 로직은 Cloud Function으로 위임
+    setTakingDamage(true); // 데미지 애니메이션을 위해 잠시 true로 설정
+
+    try {
+      const result = await callCompleteTask({ taskId: id });
+      console.log('Cloud Function Response:', result.data);
+
+      // Cloud Function의 응답을 기반으로 UI 상태 업데이트
+      if (result.data.status === 'success') {
+        // 태스크 상태 업데이트
+        setTasks(prevTasks => prevTasks.map(t =>
+          t.id === id
+            ? { ...t, completed: true, lastCompleted: result.data.lastCompleted || new Date().toISOString().split('T')[0], isDue: false }
+            : t
+        ));
+
+        // 보스 HP 업데이트
+        setBosses(prevBosses => prevBosses.map(boss =>
+          boss.id === result.data.bossId
+            ? { ...boss, currentHp: result.data.newBossHp }
+            : boss
+        ));
+      } else {
+        alert(`Error: ${result.data.message}`);
+      }
+    } catch (error) {
+      console.error("Error calling Cloud Function:", error);
+      alert(`Failed to complete task: ${error.message}`);
+    } finally {
+      setTimeout(() => setTakingDamage(false), 500); // 애니메이션 종료
+    }
   };
 
   const editTask = async (id) => {
@@ -306,6 +325,8 @@ function App() {
       currentHp: finalBossHp,
       userId: userId, // Associate boss with the current user
     };
+
+    console.log("Attempting to add boss with data:", newBossData);
 
     try {
       const docRef = await addDoc(collection(db, "bosses"), newBossData);
