@@ -63,8 +63,8 @@ public class GoalController {
         dto.setTitle(goal.getTitle());
         dto.setDescription(goal.getDescription());
         dto.setStatus(goal.getStatus());
-        dto.setUserId(goal.getUser() != null ? goal.getUser().getId() : null);
-        dto.setParentGoalId(goal.getParentGoal() != null ? goal.getParentGoal().getId() : null);
+        dto.setUserId(goal.getUser() != null ? goal.getUser().getFirebaseUid() : null);
+        dto.setParentGoalId(goal.getParentGoal() != null ? String.valueOf(goal.getParentGoal().getId()) : null);
         dto.setDueDate(goal.getDueDate());
         dto.setMaxHp(goal.getMaxHp());
         dto.setCurrentHp(goal.getCurrentHp());
@@ -75,7 +75,7 @@ public class GoalController {
     @GetMapping
     public ResponseEntity<List<GoalDto>> getAllGoalsForCurrentUser() {
         User currentUser = getOrCreateCurrentUser();
-        List<Goal> goals = goalRepository.findByUserId(currentUser.getId());
+        List<Goal> goals = goalRepository.findByUserFirebaseUid(currentUser.getFirebaseUid());
         return ResponseEntity.ok(goals.stream().map(this::convertToDto).collect(Collectors.toList()));
     }
 
@@ -84,7 +84,7 @@ public class GoalController {
     public ResponseEntity<GoalDto> getGoalById(@PathVariable Long id) {
         User currentUser = getOrCreateCurrentUser();
         Optional<Goal> goal = goalRepository.findById(id);
-        if (goal.isEmpty() || !goal.get().getUser().getId().equals(currentUser.getId())) {
+        if (goal.isEmpty() || !goal.get().getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(convertToDto(goal.get()));
@@ -107,8 +107,8 @@ public class GoalController {
         goal.setCurrentHp(finalMaxHp);
 
         if (goalDto.getParentGoalId() != null) {
-            Optional<Goal> parentGoal = goalRepository.findById(goalDto.getParentGoalId());
-            if (parentGoal.isEmpty() || !parentGoal.get().getUser().getId().equals(currentUser.getId())) {
+            Optional<Goal> parentGoal = goalRepository.findById(Long.parseLong(goalDto.getParentGoalId()));
+            if (parentGoal.isEmpty() || !parentGoal.get().getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
                 return ResponseEntity.badRequest().build();
             }
             goal.setParentGoal(parentGoal.get());
@@ -137,8 +137,8 @@ public class GoalController {
         goalToUpdate.setCurrentHp(goalDto.getCurrentHp());
 
         if (goalDto.getParentGoalId() != null) {
-            Optional<Goal> parentGoal = goalRepository.findById(goalDto.getParentGoalId());
-            if (parentGoal.isEmpty() || !parentGoal.get().getUser().getId().equals(currentUser.getId())) {
+            Optional<Goal> parentGoal = goalRepository.findById(Long.parseLong(goalDto.getParentGoalId()));
+            if (parentGoal.isEmpty() || !parentGoal.get().getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
                 return ResponseEntity.badRequest().build();
             }
             goalToUpdate.setParentGoal(parentGoal.get());
@@ -156,7 +156,7 @@ public class GoalController {
         User currentUser = getOrCreateCurrentUser();
         Optional<Goal> goal = goalRepository.findById(id);
 
-        if (goal.isEmpty() || !goal.get().getUser().getId().equals(currentUser.getId())) {
+        if (goal.isEmpty() || !goal.get().getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
             return ResponseEntity.notFound().build();
         }
 
@@ -170,7 +170,7 @@ public class GoalController {
         User currentUser = getOrCreateCurrentUser();
         Optional<Goal> goalOptional = goalRepository.findById(goalId);
 
-        if (goalOptional.isEmpty() || !goalOptional.get().getUser().getId().equals(currentUser.getId())) {
+        if (goalOptional.isEmpty() || !goalOptional.get().getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
             return ResponseEntity.notFound().build();
         }
 

@@ -1,10 +1,13 @@
-feat: Implement sub-boss functionality and fix frontend issues
+feat: Migrate to H2 database and implement backend API for goals and tasks
 
 - Backend:
-  - Modified Goal, GoalController, GoalRepository for potential future sub-boss integration (though not directly used in this commit).
-  - Removed HelloController.
+  - Configured H2 to run in server mode.
+  - Modified Goal and Task entities to match frontend data model (hp, recurrence, difficulty, parent, user).
+  - Created GoalDto and TaskDto for data transfer.
+  - Refactored GoalController to use GoalDto and handle CRUD operations for goals, including damage application.
+  - Created TaskController for CRUD operations on tasks and implemented task completion logic.
+  - Updated GoalRepository and TaskRepository with necessary methods.
+  - Fixed compilation errors related to LocalDate import and access modifiers.
 - Frontend:
-  - Added sub-boss functionality with parentId for bosses.
-  - Implemented hierarchical display of bosses in the UI.
-  - Fixed multiple `no-undef` and syntax errors in App.js and index.js.
-  - Cleaned up redundant "New Game" button.
+  - Updated Boss.js to display due date and D-day information.
+  - Removed "New Boss Max HP" input field and related logic from App.js.

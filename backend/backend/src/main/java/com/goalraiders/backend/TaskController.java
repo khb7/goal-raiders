@@ -47,12 +47,12 @@ public class TaskController {
         dto.setId(task.getId());
         dto.setTitle(task.getTitle());
         dto.setCompleted(task.isCompleted());
-        dto.setGoalId(task.getGoal() != null ? task.getGoal().getId() : null);
+        dto.setGoalId(task.getGoal() != null ? String.valueOf(task.getGoal().getId()) : null);
         dto.setRecurrenceDays(task.getRecurrenceDays());
         dto.setLastCompleted(task.getLastCompleted());
         dto.setDifficulty(task.getDifficulty());
-        dto.setParentTaskId(task.getParentTask() != null ? task.getParentTask().getId() : null);
-        dto.setUserId(task.getUser() != null ? task.getUser().getId() : null);
+        dto.setParentTaskId(task.getParentTask() != null ? String.valueOf(task.getParentTask().getId()) : null);
+        dto.setUserId(task.getUser() != null ? task.getUser().getFirebaseUid() : null);
         return dto;
     }
 
@@ -60,7 +60,7 @@ public class TaskController {
     @GetMapping
     public ResponseEntity<List<TaskDto>> getAllTasksForCurrentUser() {
         User currentUser = getOrCreateCurrentUser();
-        List<Task> tasks = taskRepository.findByUserId(currentUser.getId());
+        List<Task> tasks = taskRepository.findByUserFirebaseUid(currentUser.getFirebaseUid());
         return ResponseEntity.ok(tasks.stream().map(this::convertToDto).collect(Collectors.toList()));
     }
 
@@ -69,7 +69,7 @@ public class TaskController {
     public ResponseEntity<TaskDto> getTaskById(@PathVariable Long id) {
         User currentUser = getOrCreateCurrentUser();
         Optional<Task> task = taskRepository.findById(id);
-        if (task.isEmpty() || !task.get().getUser().getId().equals(currentUser.getId())) {
+        if (task.isEmpty() || !task.get().getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(convertToDto(task.get()));
@@ -88,16 +88,16 @@ public class TaskController {
         task.setUser(currentUser);
 
         if (taskDto.getGoalId() != null) {
-            Optional<Goal> goal = goalRepository.findById(taskDto.getGoalId());
-            if (goal.isEmpty() || !goal.get().getUser().getId().equals(currentUser.getId())) {
+            Optional<Goal> goal = goalRepository.findById(Long.parseLong(taskDto.getGoalId()));
+            if (goal.isEmpty() || !goal.get().getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
                 return ResponseEntity.badRequest().build();
             }
             task.setGoal(goal.get());
         }
 
         if (taskDto.getParentTaskId() != null) {
-            Optional<Task> parentTask = taskRepository.findById(taskDto.getParentTaskId());
-            if (parentTask.isEmpty() || !parentTask.get().getUser().getId().equals(currentUser.getId())) {
+            Optional<Task> parentTask = taskRepository.findById(Long.parseLong(taskDto.getParentTaskId()));
+            if (parentTask.isEmpty() || !parentTask.get().getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
                 return ResponseEntity.badRequest().build();
             }
             task.setParentTask(parentTask.get());
@@ -125,8 +125,8 @@ public class TaskController {
         taskToUpdate.setDifficulty(taskDto.getDifficulty());
 
         if (taskDto.getGoalId() != null) {
-            Optional<Goal> goal = goalRepository.findById(taskDto.getGoalId());
-            if (goal.isEmpty() || !goal.get().getUser().getId().equals(currentUser.getId())) {
+            Optional<Goal> goal = goalRepository.findById(Long.parseLong(taskDto.getGoalId()));
+            if (goal.isEmpty() || !goal.get().getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
                 return ResponseEntity.badRequest().build();
             }
             taskToUpdate.setGoal(goal.get());
@@ -135,8 +135,8 @@ public class TaskController {
         }
 
         if (taskDto.getParentTaskId() != null) {
-            Optional<Task> parentTask = taskRepository.findById(taskDto.getParentTaskId());
-            if (parentTask.isEmpty() || !parentTask.get().getUser().getId().equals(currentUser.getId())) {
+            Optional<Task> parentTask = taskRepository.findById(Long.parseLong(taskDto.getParentTaskId()));
+            if (parentTask.isEmpty() || !parentTask.get().getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
                 return ResponseEntity.badRequest().build();
             }
             taskToUpdate.setParentTask(parentTask.get());
@@ -154,7 +154,7 @@ public class TaskController {
         User currentUser = getOrCreateCurrentUser();
         Optional<Task> task = taskRepository.findById(id);
 
-        if (task.isEmpty() || !task.get().getUser().getId().equals(currentUser.getId())) {
+        if (task.isEmpty() || !task.get().getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
             return ResponseEntity.notFound().build();
         }
 
@@ -168,7 +168,7 @@ public class TaskController {
         User currentUser = getOrCreateCurrentUser();
         Optional<Task> taskOptional = taskRepository.findById(taskId);
 
-        if (taskOptional.isEmpty() || !taskOptional.get().getUser().getId().equals(currentUser.getId())) {
+        if (taskOptional.isEmpty() || !taskOptional.get().getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
             return ResponseEntity.notFound().build();
         }
 

@@ -4,10 +4,8 @@ import { Modal, Button, Form } from 'react-bootstrap'; // Import Modal, Button, 
 
 
 
-import { auth, db, functions } from './index'; // auth, db, functions 객체 import
+import { auth } from './index'; // auth 객체 import
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { collection, addDoc, getDocs, updateDoc, doc, deleteDoc, query, where } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
 import { useNavigate } from 'react-router-dom';
 import Boss from './Boss';
 
@@ -41,9 +39,12 @@ function App() {
         setUserId(currentUser.uid); // Set userId when user is logged in
         const token = await currentUser.getIdToken();
         setIdToken(token); // Store the ID token
+        console.log("Firebase User:", currentUser);
+        console.log("Fetched ID Token:", token);
       } else {
         setUserId(''); // Clear userId when user is logged out
         setIdToken(null); // Clear ID token
+        console.log("User logged out.");
       }
     });
     return () => unsubscribe(); // Cleanup subscription on unmount
@@ -67,51 +68,60 @@ function App() {
   const isVictory = currentBoss && currentBoss.currentHp <= 0;
 
   const saveTask = async () => {
-    if (task && currentBossId && userId) { // Ensure userId is available
-      if (editingTaskId) {
-        // Update existing task in Firestore
-        try {
-          const taskRef = doc(db, "tasks", editingTaskId);
-          await updateDoc(taskRef, {
-            name: task,
-            recurrenceDays: parseInt(recurrenceDays),
-            difficulty: selectedDifficulty,
-            parentId: selectedParentTask || null,
+    if (task && userId) { // Ensure userId is available
+      const taskData = {
+        title: task,
+        completed: false,
+        recurrenceDays: parseInt(recurrenceDays),
+        lastCompleted: null, // Will be set by backend on completion
+        difficulty: selectedDifficulty,
+        parentTaskId: selectedParentTask || null,
+        goalId: currentBossId, // Map bossId to goalId
+        userId: userId,
+      };
+
+      try {
+        let response;
+        if (editingTaskId) {
+          // Update existing task
+          response = await fetch(`http://localhost:8080/api/tasks/${editingTaskId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${idToken}`,
+            },
+            body: JSON.stringify(taskData),
           });
-          setTasks(tasks.map(t => 
-            t.id === editingTaskId
-              ? { 
-                  ...t, 
-                  name: task, 
-                  recurrenceDays: parseInt(recurrenceDays), 
-                  difficulty: selectedDifficulty,
-                  parentId: selectedParentTask || null,
-                }
-              : t
-          ));
-          setEditingTaskId(null);
-        } catch (error) {
-          console.error("Error updating task in Firestore:", error);
+        } else {
+          // Add new task
+          response = await fetch('http://localhost:8080/api/tasks', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${idToken}`,
+            },
+            body: JSON.stringify(taskData),
+          });
         }
-      } else {
-        // Add new task to Firestore
-        const newTaskData = {
-          name: task,
-          completed: false,
-          recurrenceDays: parseInt(recurrenceDays),
-          lastCompleted: null,
-          difficulty: selectedDifficulty,
-          parentId: selectedParentTask || null,
-          bossId: currentBossId,
-          userId: userId, // Associate task with the current user
-        };
-        try {
-          const docRef = await addDoc(collection(db, "tasks"), newTaskData);
-          setTasks([...tasks, { id: docRef.id, ...newTaskData }]);
-        } catch (error) {
-          console.error("Error adding task to Firestore:", error);
+
+        if (response.ok) {
+          const savedTask = await response.json();
+          if (editingTaskId) {
+            setTasks(tasks.map(t => (t.id === editingTaskId ? savedTask : t)));
+            setEditingTaskId(null);
+          } else {
+            setTasks([...tasks, savedTask]);
+          }
+        } else {
+          const errorText = await response.text();
+          console.error("Error saving task:", errorText);
+          alert(`Failed to save task: ${errorText}`);
         }
+      } catch (error) {
+        console.error("Error saving task:", error);
+        alert(`Failed to save task: ${error.message}`);
       }
+        
       setTask('');
       setRecurrenceDays(0);
       setSelectedDifficulty('Medium');
@@ -119,108 +129,147 @@ function App() {
     }
   };
 
-  // Cloud Function 호출을 위한 callable 함수 정의
-  const callCompleteTask = httpsCallable(functions, 'completeTask');
-
   const toggleTask = async (id) => {
-    const taskIndex = tasks.findIndex(t => t.id === id);
-    if (taskIndex === -1) return;
-
-    const taskToToggle = tasks[taskIndex];
-
-    // 이미 완료된 태스크를 다시 미완료로 되돌리는 로직 (클라이언트에서 처리)
-    if (taskToToggle.completed) {
-      const newTasks = [...tasks];
-      newTasks[taskIndex].completed = false;
-      newTasks[taskIndex].lastCompleted = null; // Reset last completed date
-      setTasks(newTasks);
-      // TODO: 필요하다면 서버에 태스크 미완료 상태를 알리는 함수 추가
+    if (!idToken) {
+      alert("로그인이 필요합니다.");
       return;
     }
 
-    // 태스크 완료 및 보스 데미지 로직은 Cloud Function으로 위임
-    setTakingDamage(true); // 데미지 애니메이션을 위해 잠시 true로 설정
+    setTakingDamage(true); // For damage animation
 
     try {
-      const result = await callCompleteTask({ taskId: id });
-      console.log('Cloud Function Response:', result.data);
+      const response = await fetch(`http://localhost:8080/api/tasks/${id}/complete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
 
-      // Cloud Function의 응답을 기반으로 UI 상태 업데이트
-      if (result.data.status === 'success') {
-        // 태스크 상태 업데이트
+      if (response.ok) {
+        const updatedTask = await response.json();
         setTasks(prevTasks => prevTasks.map(t =>
-          t.id === id
-            ? { ...t, completed: true, lastCompleted: result.data.lastCompleted || new Date().toISOString().split('T')[0], isDue: false }
+          t.id === updatedTask.id
+            ? { ...updatedTask, name: updatedTask.title } // Map title to name for consistency
             : t
         ));
 
-        // 보스 HP 업데이트
-        setBosses(prevBosses => prevBosses.map(boss =>
-          boss.id === result.data.bossId
-            ? { ...boss, currentHp: result.data.newBossHp }
-            : boss
-        ));
+        // Fetch updated boss data after task completion
+        if (updatedTask.goalId) {
+          const bossResponse = await fetch(`http://localhost:8080/api/goals/${updatedTask.goalId}`, {
+            headers: {
+              'Authorization': `Bearer ${idToken}`,
+            },
+          });
+          if (bossResponse.ok) {
+            const updatedBoss = await bossResponse.json();
+            setBosses(prevBosses => prevBosses.map(boss =>
+              boss.id === updatedBoss.id
+                ? updatedBoss
+                : boss
+            ));
+          } else {
+            console.error("Failed to fetch updated boss data");
+          }
+        }
       } else {
-        alert(`Error: ${result.data.message}`);
+        const errorText = await response.text();
+        alert(`Failed to complete task: ${errorText}`);
       }
     } catch (error) {
-      console.error("Error calling Cloud Function:", error);
+      console.error("Error completing task:", error);
       alert(`Failed to complete task: ${error.message}`);
     } finally {
-      setTimeout(() => setTakingDamage(false), 500); // 애니메이션 종료
+      setTimeout(() => setTakingDamage(false), 500); // End animation
     }
   };
 
   const editTask = async (id) => {
-    const taskToEdit = tasks.find(t => t.id === id);
-    if (taskToEdit) {
-      setTask(taskToEdit.name);
-      setRecurrenceDays(taskToEdit.recurrenceDays);
-      setSelectedDifficulty(taskToEdit.difficulty);
-      setSelectedParentTask(taskToEdit.parentId || '');
-      setEditingTaskId(id);
+    try {
+      const response = await fetch(`http://localhost:8080/api/tasks/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
+      if (response.ok) {
+        const taskToEdit = await response.json();
+        setTask(taskToEdit.title);
+        setRecurrenceDays(taskToEdit.recurrenceDays);
+        setSelectedDifficulty(taskToEdit.difficulty);
+        setSelectedParentTask(taskToEdit.parentTaskId || '');
+        setEditingTaskId(id);
+      } else {
+        const errorText = await response.text();
+        console.error("Error fetching task for edit:", errorText);
+        alert(`Failed to fetch task for edit: ${errorText}`);
+      }
+    } catch (error) {
+      console.error("Error fetching task for edit:", error);
+      alert(`Failed to fetch task for edit: ${error.message}`);
     }
   };
 
   const deleteTask = async (id) => {
-    const tasksToDelete = [id];
-    const findChildren = (parentId) => {
-      tasks.forEach(t => {
-        if (t.parentId === parentId) {
-          tasksToDelete.push(t.id);
-          findChildren(t.id);
-        }
-      });
-    };
-    findChildren(id);
-
-    // Delete tasks from Firestore
+    if (!idToken) {
+      alert("로그인이 필요합니다.");
+      return;
+    }
     try {
-      const deletePromises = tasksToDelete.map(taskId => deleteDoc(doc(db, "tasks", taskId)));
-      await Promise.all(deletePromises);
-      setTasks(tasks.filter(t => !tasksToDelete.includes(t.id)));
+      const response = await fetch(`http://localhost:8080/api/tasks/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
+      if (response.ok) {
+        setTasks(tasks.filter(t => t.id !== id));
+      } else {
+        const errorText = await response.text();
+        console.error("Error deleting task:", errorText);
+        alert(`Failed to delete task: ${errorText}`);
+      }
     } catch (error) {
-      console.error("Error deleting tasks from Firestore:", error);
+      console.error("Error deleting task:", error);
+      alert(`Failed to delete task: ${error.message}`);
     }
   };
 
-  const loadData = async () => {
-    if (userId) {
-      // Load bosses from Firestore
-      const bossesCollectionRef = collection(db, "bosses");
-      const q = query(bossesCollectionRef, where("userId", "==", userId));
-      const querySnapshot = await getDocs(q);
-      const fetchedBosses = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setBosses(fetchedBosses);
+  const loadData = useCallback(async () => {
+    if (userId && idToken) {
+      try {
+        // Load bosses from backend
+        const bossesResponse = await fetch('http://localhost:8080/api/goals', {
+          headers: {
+            'Authorization': `Bearer ${idToken}`,
+          },
+        });
+        if (bossesResponse.ok) {
+          const fetchedBosses = await bossesResponse.json();
+          setBosses(fetchedBosses);
+          if (fetchedBosses.length > 0) {
+            setCurrentBossId(fetchedBosses[0].id); // Set first boss as current
+          }
+        } else {
+          console.error("Failed to fetch bosses:", await bossesResponse.text());
+        }
 
-      // Load tasks from Firestore (assuming tasks are also user-specific)
-      const tasksCollectionRef = collection(db, "tasks");
-      const tasksQuery = query(tasksCollectionRef, where("userId", "==", userId));
-      const tasksSnapshot = await getDocs(tasksQuery);
-      const fetchedTasks = tasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setTasks(fetchedTasks);
+        // Load tasks from backend
+        const tasksResponse = await fetch('http://localhost:8080/api/tasks', {
+          headers: {
+            'Authorization': `Bearer ${idToken}`,
+          },
+        });
+        if (tasksResponse.ok) {
+          const fetchedTasks = await tasksResponse.json();
+          setTasks(fetchedTasks.map(t => ({ ...t, name: t.title }))); // Map title to name for consistency
+        } else {
+          console.error("Failed to fetch tasks:", await tasksResponse.text());
+        }
+      } catch (error) {
+        console.error("Error loading data:", error);
+      }
     }
-  };
+  }, [userId, idToken]);
 
   
 
@@ -271,38 +320,75 @@ function App() {
     tasks.forEach(task => {
       if (task.isDue && Notification.permission === "granted") {
         new Notification("Task Due!", {
-          body: `Time to complete: ${task.name}`,
+          body: `Time to complete: ${task.title}`,
         });
       }
     });
   }, [tasks]);
 
   const resetGame = async () => {
-    // Delete all bosses for the current user from Firestore
-    if (userId) {
-      const bossesCollectionRef = collection(db, "bosses");
-      const q = query(bossesCollectionRef, where("userId", "==", userId));
-      const querySnapshot = await getDocs(q);
-      const deletePromises = querySnapshot.docs.map(docToDelete => deleteDoc(doc(db, "bosses", docToDelete.id)));
-      await Promise.all(deletePromises);
-
-      // Delete all tasks for the current user from Firestore
-      const tasksCollectionRef = collection(db, "tasks");
-      const tasksQuery = query(tasksCollectionRef, where("userId", "==", userId));
-      const tasksSnapshot = await getDocs(tasksQuery);
-      const deleteTasksPromises = tasksSnapshot.docs.map(docToDelete => deleteDoc(doc(db, "tasks", docToDelete.id)));
-      await Promise.all(deleteTasksPromises);
+    if (!userId || !idToken) {
+      alert("로그인이 필요합니다.");
+      return;
     }
 
-    setBosses([]);
-    setCurrentBossId(null);
-    setNewBossName('');
-    setTasks([]);
-    setTask('');
-    setRecurrenceDays(0);
-    setSelectedDifficulty('Medium');
-    setSelectedParentTask('');
-    setEditingTaskId(null); // Clear editing task ID
+    try {
+      // Fetch and delete all bosses for the current user from backend
+      const bossesResponse = await fetch('http://localhost:8080/api/goals', {
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
+      if (bossesResponse.ok) {
+        const fetchedBosses = await bossesResponse.json();
+        const deleteBossPromises = fetchedBosses.map(boss =>
+          fetch(`http://localhost:8080/api/goals/${boss.id}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${idToken}`,
+            },
+          })
+        );
+        await Promise.all(deleteBossPromises);
+      } else {
+        console.error("Failed to fetch bosses for deletion:", await bossesResponse.text());
+      }
+
+      // Fetch and delete all tasks for the current user from backend
+      const tasksResponse = await fetch('http://localhost:8080/api/tasks', {
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
+      if (tasksResponse.ok) {
+        const fetchedTasks = await tasksResponse.json();
+        const deleteTaskPromises = fetchedTasks.map(task =>
+          fetch(`http://localhost:8080/api/tasks/${task.id}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${idToken}`,
+            },
+          })
+        );
+        await Promise.all(deleteTaskPromises);
+      } else {
+        console.error("Failed to fetch tasks for deletion:", await tasksResponse.text());
+      }
+
+      // Clear local state
+      setBosses([]);
+      setCurrentBossId(null);
+      setNewBossName('');
+      setTasks([]);
+      setTask('');
+      setRecurrenceDays(0);
+      setSelectedDifficulty('Medium');
+      setSelectedParentTask('');
+      setEditingTaskId(null); // Clear editing task ID
+    } catch (error) {
+      console.error("Error resetting game:", error);
+      alert(`Failed to reset game: ${error.message}`);
+    }
   }
 
   const handleSignOut = useCallback(async () => {
@@ -346,35 +432,48 @@ function App() {
       alert('보스 이름을 입력해주세요.');
       return;
     }
-    if (!userId) {
+    if (!userId || !idToken) {
       alert('로그인 후 보스를 추가할 수 있습니다.');
       return;
     }
 
-    const finalBossHp = BOSS_HP_MAP[selectedBossDifficulty];
-    const newBossData = {
-      name: newBossName,
-      maxHp: finalBossHp,
-      currentHp: finalBossHp,
-      userId: userId, // Associate boss with the current user
-      parentId: selectedParentBoss || null, // Add parentId
-      dueDate: newBossDueDate || null, // Add dueDate
+    const bossData = {
+      title: newBossName,
+      maxHp: BOSS_HP_MAP[selectedBossDifficulty],
+      currentHp: BOSS_HP_MAP[selectedBossDifficulty],
+      userId: userId,
+      parentGoalId: selectedParentBoss || null,
+      dueDate: newBossDueDate || null,
+      status: selectedBossDifficulty, // Using difficulty as status for now
     };
 
-    console.log("Attempting to add boss with data:", newBossData);
-
     try {
-      const docRef = await addDoc(collection(db, "bosses"), newBossData);
-      const addedBoss = { id: docRef.id, ...newBossData };
-      setBosses([...bosses, addedBoss]);
-      setCurrentBossId(addedBoss.id);
-      setNewBossName('');
-      setSelectedBossDifficulty('Medium'); // Reset to default
-      setSelectedParentBoss(''); // Reset parent boss selection
-      setNewBossDueDate(''); // Reset due date
-      setShowBossSettingsModal(false); // Close modal after adding boss
+      const response = await fetch('http://localhost:8080/api/goals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify(bossData),
+      });
+
+      if (response.ok) {
+        const addedBoss = await response.json();
+        setBosses([...bosses, addedBoss]);
+        setCurrentBossId(addedBoss.id);
+        setNewBossName('');
+        setSelectedBossDifficulty('Medium');
+        setSelectedParentBoss('');
+        setNewBossDueDate('');
+        setShowBossSettingsModal(false);
+      } else {
+        const errorText = await response.text();
+        console.error("Error adding boss:", errorText);
+        alert(`Failed to add boss: ${errorText}`);
+      }
     } catch (e) {
-      console.error("Error adding document: ", e);
+      console.error("Error adding boss:", e);
+      alert(`Failed to add boss: ${e.message}`);
     }
   };
 
@@ -382,9 +481,9 @@ function App() {
       return (
           <div className="container text-center mt-5">
               <h1 className="display-1 text-success">VICTORY!</h1>
-              <p className="lead">You have defeated the {currentBoss.name}!</p>
+              <p className="lead">You have defeated the {currentBoss.title}!</p>
               <div>
-                <Boss bossName={currentBoss.name} currentHp={0} maxHp={currentBoss.maxHp} takingDamage={false} isDefeated={true} />
+                <Boss bossName={currentBoss.title} currentHp={0} maxHp={currentBoss.maxHp} takingDamage={false} isDefeated={true} />
               </div>
               <button className="btn btn-primary mt-3" onClick={resetGame}>
                   Start a New Challenge
@@ -404,7 +503,7 @@ function App() {
             } ${task.isDue ? 'list-group-item-info' : ''}`}
             style={{ paddingLeft: `${20 + indent * 20}px` }}
           >
-            {task.name} ({task.difficulty} - {DIFFICULTY_DAMAGE_MAP[task.difficulty]} HP)
+            {task.title} ({task.difficulty} - {DIFFICULTY_DAMAGE_MAP[task.difficulty]} HP)
             <div>
               <button
                 className={`btn ${task.completed ? 'btn-warning' : 'btn-success'}`}
@@ -444,7 +543,7 @@ function App() {
             style={{ paddingLeft: `${20 + indent * 20}px` }}
             onClick={() => setCurrentBossId(boss.id)}
           >
-            {boss.name} ({boss.currentHp} / {boss.maxHp} HP)
+            {boss.title} ({boss.currentHp} / {boss.maxHp} HP)
             <div>
               {/* Add boss specific actions here if needed */}
             </div>
@@ -478,7 +577,7 @@ function App() {
           {currentBoss && (
             <div>
               <div className="d-flex align-items-center">
-                <span className="me-2">Current Boss: <strong>{currentBoss.name}</strong></span>
+                <span className="me-2">Current Boss: <strong>{currentBoss.title}</strong></span>
                 <div className="progress" style={{ width: '150px', height: '20px' }}>
                   <div
                     className="progress-bar bg-success"
@@ -594,7 +693,7 @@ function App() {
           </div>
 
           {currentBoss && (
-              <Boss bossName={currentBoss.name} currentHp={currentBoss.currentHp} maxHp={currentBoss.maxHp} takingDamage={takingDamage} dueDate={currentBoss.dueDate} />
+              <Boss bossName={currentBoss.title} currentHp={currentBoss.currentHp} maxHp={currentBoss.maxHp} takingDamage={takingDamage} dueDate={currentBoss.dueDate} />
           )}
 
           <div className="card">

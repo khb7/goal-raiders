@@ -6,12 +6,12 @@ public class TaskDto {
     private Long id;
     private String title;
     private boolean completed;
-    private Long goalId;
+    private String goalId;
+    private String parentTaskId;
+    private String userId;
     private int recurrenceDays;
     private LocalDate lastCompleted;
     private String difficulty;
-    private Long parentTaskId;
-    private Long userId;
 
     // Getters and Setters
     public Long getId() {
@@ -38,11 +38,11 @@ public class TaskDto {
         this.completed = completed;
     }
 
-    public Long getGoalId() {
+    public String getGoalId() {
         return goalId;
     }
 
-    public void setGoalId(Long goalId) {
+    public void setGoalId(String goalId) {
         this.goalId = goalId;
     }
 
@@ -70,19 +70,19 @@ public class TaskDto {
         this.difficulty = difficulty;
     }
 
-    public Long getParentTaskId() {
+    public String getParentTaskId() {
         return parentTaskId;
     }
 
-    public void setParentTaskId(Long parentTaskId) {
+    public void setParentTaskId(String parentTaskId) {
         this.parentTaskId = parentTaskId;
     }
 
-    public Long getUserId() {
+    public String getUserId() {
         return userId;
     }
 
-    public void setUserId(Long userId) {
+    public void setUserId(String userId) {
         this.userId = userId;
     }
 }

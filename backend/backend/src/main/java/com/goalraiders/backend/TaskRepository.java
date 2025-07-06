@@ -7,4 +7,5 @@ import java.util.List;
 public interface TaskRepository extends JpaRepository<Task, Long> {
     List<Task> findByGoalId(Long goalId);
     List<Task> findByUserId(Long userId);
+    List<Task> findByUserFirebaseUid(String firebaseUid);
 }

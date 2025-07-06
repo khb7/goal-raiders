@@ -7,8 +7,8 @@ public class GoalDto {
     private String title;
     private String description;
     private String status;
-    private Long userId;
-    private Long parentGoalId;
+    private String userId;
+    private String parentGoalId;
     private LocalDate dueDate;
     private int maxHp;
     private int currentHp;
@@ -46,19 +46,19 @@ public class GoalDto {
         this.status = status;
     }
 
-    public Long getUserId() {
+    public String getUserId() {
         return userId;
     }
 
-    public void setUserId(Long userId) {
+    public void setUserId(String userId) {
         this.userId = userId;
     }
 
-    public Long getParentGoalId() {
+    public String getParentGoalId() {
         return parentGoalId;
     }
 
-    public void setParentGoalId(Long parentGoalId) {
+    public void setParentGoalId(String parentGoalId) {
         this.parentGoalId = parentGoalId;
     }
 
