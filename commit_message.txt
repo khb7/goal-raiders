@@ -1,0 +1,7 @@
+feat: Implement Firebase authentication and user management
+
+- Resolve FirebaseApp initialization issue in BackendApplication.java.
+- Integrate Firebase Admin SDK and Spring Security for authentication.
+- Update GoalController, User, and UserRepository for Firebase user management.
+- Add TestController, SecurityConfig, and FirebaseAuthenticationFilter.
+- Update frontend (App.js) for Firebase ID token handling.

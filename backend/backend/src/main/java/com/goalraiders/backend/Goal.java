@@ -1,6 +1,9 @@
 package com.goalraiders.backend;
 
 import jakarta.persistence.*;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "goals")
@@ -17,6 +20,15 @@ public class Goal {
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
+
+    @ManyToOne
+    @JoinColumn(name = "parent_goal_id")
+    private Goal parentGoal;
+
+    @OneToMany(mappedBy = "parentGoal", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Goal> subGoals = new ArrayList<>();
+
+    private LocalDate dueDate;
 
     // Getters and Setters
     public Long getId() {
@@ -57,5 +69,29 @@ public class Goal {
 
     public void setUser(User user) {
         this.user = user;
+    }
+
+    public Goal getParentGoal() {
+        return parentGoal;
+    }
+
+    public void setParentGoal(Goal parentGoal) {
+        this.parentGoal = parentGoal;
+    }
+
+    public List<Goal> getSubGoals() {
+        return subGoals;
+    }
+
+    public void setSubGoals(List<Goal> subGoals) {
+        this.subGoals = subGoals;
+    }
+
+    public LocalDate getDueDate() {
+        return dueDate;
+    }
+
+    public void setDueDate(LocalDate dueDate) {
+        this.dueDate = dueDate;
     }
 }

@@ -41,18 +41,39 @@ public class GoalController {
         }
     }
 
-    // 현재 인증된 사용자의 모든 목표 조회
-    @GetMapping("/goals")
-    public ResponseEntity<List<Goal>> getGoalsForCurrentUser() {
+    // 현재 인증된 사용자의 모든 상위 목표 조회
+    @GetMapping("/goals/top-level")
+    public ResponseEntity<List<Goal>> getTopLevelGoalsForCurrentUser() {
         User currentUser = getOrCreateCurrentUser();
-        return ResponseEntity.ok(goalRepository.findByUserId(currentUser.getId()));
+        return ResponseEntity.ok(goalRepository.findByUserIdAndParentGoalIsNull(currentUser.getId()));
     }
 
-    // 새로운 목표 생성
+    // 특정 상위 목표의 하위 목표 조회
+    @GetMapping("/goals/{parentGoalId}/subgoals")
+    public ResponseEntity<List<Goal>> getSubGoals(@PathVariable Long parentGoalId) {
+        User currentUser = getOrCreateCurrentUser();
+        Optional<Goal> parentGoal = goalRepository.findById(parentGoalId);
+
+        if (parentGoal.isEmpty() || !parentGoal.get().getUser().getId().equals(currentUser.getId())) {
+            return ResponseEntity.notFound().build(); // 부모 목표가 없거나 현재 사용자의 목표가 아님
+        }
+        return ResponseEntity.ok(goalRepository.findByParentGoalId(parentGoalId));
+    }
+
+    // 새로운 목표 생성 (상위 또는 하위 목표)
     @PostMapping("/goals")
     public ResponseEntity<Goal> createGoalForCurrentUser(@RequestBody Goal goalRequest) {
         User currentUser = getOrCreateCurrentUser();
         goalRequest.setUser(currentUser);
+
+        if (goalRequest.getParentGoal() != null && goalRequest.getParentGoal().getId() != null) {
+            Optional<Goal> parentGoal = goalRepository.findById(goalRequest.getParentGoal().getId());
+            if (parentGoal.isEmpty() || !parentGoal.get().getUser().getId().equals(currentUser.getId())) {
+                return ResponseEntity.badRequest().build(); // 유효하지 않은 부모 목표
+            }
+            goalRequest.setParentGoal(parentGoal.get());
+        }
+
         Goal goal = goalRepository.save(goalRequest);
         return ResponseEntity.ok(goal);
     }

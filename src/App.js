@@ -2,29 +2,33 @@ import React, { useState, useEffect, useCallback } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Modal, Button, Form } from 'react-bootstrap'; // Import Modal, Button, Form
 
-import Boss from './Boss';
+
 
 import { auth, db, functions } from './index'; // auth, db, functions 객체 import
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { collection, addDoc, getDocs, updateDoc, doc, deleteDoc, query, where } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useNavigate } from 'react-router-dom';
+import Boss from './Boss';
 
 function App() {
-  const [bosses, setBosses] = useState([]);
-  const [currentBossId, setCurrentBossId] = useState(null);
-  const [newBossName, setNewBossName] = useState('');
-  const [newBossHp, setNewBossHp] = useState(100);
+  
   const [tasks, setTasks] = useState([]);
   const [task, setTask] = useState('');
   const [recurrenceDays, setRecurrenceDays] = useState(0); // 0 for no recurrence
   const [selectedDifficulty, setSelectedDifficulty] = useState('Medium'); // Default difficulty
   const [selectedParentTask, setSelectedParentTask] = useState(''); // For sub-tasks
-  const [takingDamage, setTakingDamage] = useState(false);
-  const [userId, setUserId] = useState(''); // User ID for data persistence
-  const [editingTaskId, setEditingTaskId] = useState(null); // State to hold the ID of the task being edited
-  const [showBossSettingsModal, setShowBossSettingsModal] = useState(false); // State for modal visibility
-  const [selectedBossDifficulty, setSelectedBossDifficulty] = useState('Medium'); // New state for boss difficulty
+  const [selectedParentBoss, setSelectedParentBoss] = useState(''); // For sub-bosses
+  const [userId, setUserId] = useState(null); // User ID state
+  const [bosses, setBosses] = useState([]); // Bosses state
+  const [currentBossId, setCurrentBossId] = useState(null); // Current boss ID state
+  const [newBossName, setNewBossName] = useState(''); // New boss name state
+  const [newBossHp, setNewBossHp] = useState(100); // New boss HP state
+  const [selectedBossDifficulty, setSelectedBossDifficulty] = useState('Medium'); // New boss difficulty state
+  const [showBossSettingsModal, setShowBossSettingsModal] = useState(false); // Boss settings modal state
+  const [editingTaskId, setEditingTaskId] = useState(null); // Editing task ID state
+  const [takingDamage, setTakingDamage] = useState(false); // Taking damage animation state
+
   const [user, setUser] = useState(null); // User state for login status
   const [idToken, setIdToken] = useState(null); // Firebase ID Token
   const navigate = useNavigate();
@@ -354,6 +358,7 @@ function App() {
       maxHp: finalBossHp,
       currentHp: finalBossHp,
       userId: userId, // Associate boss with the current user
+      parentId: selectedParentBoss || null, // Add parentId
     };
 
     console.log("Attempting to add boss with data:", newBossData);
@@ -366,6 +371,7 @@ function App() {
       setNewBossName('');
       setNewBossHp(100); // Reset to default for next time
       setSelectedBossDifficulty('Medium'); // Reset to default
+      setSelectedParentBoss(''); // Reset parent boss selection
       setShowBossSettingsModal(false); // Close modal after adding boss
     } catch (e) {
       console.error("Error adding document: ", e);
@@ -428,6 +434,26 @@ function App() {
 
   
 
+  const renderBosses = (bossList, parentId = null, indent = 0) => {
+    return bossList
+      .filter(boss => boss.parentId === parentId)
+      .map(boss => (
+        <React.Fragment key={boss.id}>
+          <li
+            className={`list-group-item d-flex justify-content-between align-items-center ${boss.id === currentBossId ? 'active' : ''}`}
+            style={{ paddingLeft: `${20 + indent * 20}px` }}
+            onClick={() => setCurrentBossId(boss.id)}
+          >
+            {boss.name} ({boss.currentHp} / {boss.maxHp} HP)
+            <div>
+              {/* Add boss specific actions here if needed */}
+            </div>
+          </li>
+          {renderBosses(bossList, boss.id, indent + 1)}
+        </React.Fragment>
+      ));
+  };
+
   return (
     <div className="container-fluid mt-3 app-main-background d-flex flex-column min-vh-100">
       {/* Header */}
@@ -445,35 +471,28 @@ function App() {
             )}
           </div>
           <div>
-            <button className="btn btn-outline-info btn-sm me-2" onClick={callBackendApi}>Call Backend API</button>
-            <button className="btn btn-outline-primary btn-sm" onClick={resetGame}>New Game</button>
-          </div>
-        </div>
-      </div>}
-          </div>
-          {currentBoss && (
-            <div className="d-flex align-items-center">
-              <span className="me-2">Current Boss: <strong>{currentBoss.name}</strong></span>
-              <div className="progress" style={{ width: '150px', height: '20px' }}>
-                <div
-                  className="progress-bar bg-success"
-                  role="progressbar"
-                  style={{ width: `${(currentBoss.currentHp / currentBoss.maxHp) * 100}%` }}
-                  aria-valuenow={currentBoss.currentHp}
-                  aria-valuemin="0"
-                  aria-valuemax={currentBoss.maxHp}
-                ></div>
-              </div>
-              <span className="ms-2">{currentBoss.currentHp} / {currentBoss.maxHp} HP</span>
-            </div>
-          )}
-          <div>
             <button className="btn btn-outline-primary btn-sm" onClick={resetGame}>New Game</button>
           </div>
         </div>
       </div>
-
-      {/* Page Title Area */}
+          {currentBoss && (
+            <div>
+              <div className="d-flex align-items-center">
+                <span className="me-2">Current Boss: <strong>{currentBoss.name}</strong></span>
+                <div className="progress" style={{ width: '150px', height: '20px' }}>
+                  <div
+                    className="progress-bar bg-success"
+                    role="progressbar"
+                    style={{ width: `${(currentBoss.currentHp / currentBoss.maxHp) * 100}%` }}
+                    aria-valuenow={currentBoss.currentHp}
+                    aria-valuemin="0"
+                    aria-valuemax={currentBoss.maxHp}
+                  ></div>
+                </div>
+                <span className="ms-2">{currentBoss.currentHp} / {currentBoss.maxHp} HP</span>
+              </div>
+            </div>
+          )}
       <div className="bg-light p-4 mb-4 rounded-3">
         <div className="container-fluid">
           <h1 className="display-5 fw-bold">Dashboard</h1>
@@ -545,6 +564,19 @@ function App() {
                               ))}
                           </Form.Select>
                       </Form.Group>
+                  <Form.Group className="mb-3">
+                          <Form.Label htmlFor="parentBossSelect">Parent Boss:</Form.Label>
+                          <Form.Select
+                              id="parentBossSelect"
+                              value={selectedParentBoss}
+                              onChange={(e) => setSelectedParentBoss(e.target.value)}
+                          >
+                              <option value="">No Parent Boss</option>
+                              {bosses.map(boss => (
+                                  <option key={boss.id} value={boss.id}>{boss.name}</option>
+                              ))}
+                          </Form.Select>
+                      </Form.Group>
                   </Form>
               </Modal.Body>
               <Modal.Footer>
@@ -558,18 +590,10 @@ function App() {
           </Modal>
 
           <div className="mb-4">
-              <label htmlFor="selectBoss" className="form-label">Select Boss:</label>
-              <select
-                  id="selectBoss"
-                  className="form-select"
-                  value={currentBossId || ''}
-                  onChange={(e) => setCurrentBossId(parseInt(e.target.value))}
-              >
-                  <option value="">Select a Boss</option>
-                  {bosses.map(boss => (
-                      <option key={boss.id} value={boss.id}>{boss.name}</option>
-                  ))}
-              </select>
+              <h3 className="card-title">Bosses</h3>
+              <ul className="list-group">
+                  {renderBosses(bosses)}
+              </ul>
           </div>
 
           {currentBoss && (
