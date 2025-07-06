@@ -26,16 +26,20 @@ function App() {
   const [showBossSettingsModal, setShowBossSettingsModal] = useState(false); // State for modal visibility
   const [selectedBossDifficulty, setSelectedBossDifficulty] = useState('Medium'); // New state for boss difficulty
   const [user, setUser] = useState(null); // User state for login status
+  const [idToken, setIdToken] = useState(null); // Firebase ID Token
   const navigate = useNavigate();
 
   // Listen for authentication state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
         setUserId(currentUser.uid); // Set userId when user is logged in
+        const token = await currentUser.getIdToken();
+        setIdToken(token); // Store the ID token
       } else {
         setUserId(''); // Clear userId when user is logged out
+        setIdToken(null); // Clear ID token
       }
     });
     return () => unsubscribe(); // Cleanup subscription on unmount
@@ -308,6 +312,32 @@ function App() {
     }
   }, [navigate]);
 
+  const callBackendApi = async () => {
+    if (!idToken) {
+      alert("로그인이 필요합니다.");
+      return;
+    }
+    try {
+      const response = await fetch('http://localhost:8080/api/test', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (response.ok) {
+        const data = await response.text();
+        alert(`백엔드 응답: ${data}`);
+      } else {
+        const errorText = await response.text();
+        alert(`백엔드 호출 실패: ${response.status} - ${errorText}`);
+      }
+    } catch (error) {
+      console.error("백엔드 호출 오류:", error);
+      alert("백엔드 호출 중 오류가 발생했습니다.");
+    }
+  };
+
   const addBoss = async () => {
     if (!newBossName) {
       alert('보스 이름을 입력해주세요.');
@@ -413,6 +443,13 @@ function App() {
             ) : (
               <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/auth')}>Login / Sign Up</button>
             )}
+          </div>
+          <div>
+            <button className="btn btn-outline-info btn-sm me-2" onClick={callBackendApi}>Call Backend API</button>
+            <button className="btn btn-outline-primary btn-sm" onClick={resetGame}>New Game</button>
+          </div>
+        </div>
+      </div>}
           </div>
           {currentBoss && (
             <div className="d-flex align-items-center">

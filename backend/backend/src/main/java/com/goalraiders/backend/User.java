@@ -1,5 +1,6 @@
 package com.goalraiders.backend;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -15,6 +16,9 @@ public class User {
     private Long id;
     private String username;
     private String email;
+
+    @Column(unique = true) // firebaseUid는 고유해야 함
+    private String firebaseUid;
 
     // Getters and Setters
     public Long getId() {
@@ -39,5 +43,13 @@ public class User {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getFirebaseUid() {
+        return firebaseUid;
+    }
+
+    public void setFirebaseUid(String firebaseUid) {
+        this.firebaseUid = firebaseUid;
     }
 }
