@@ -1,35 +1,15 @@
-package com.goalraiders.backend;
+package com.goalraiders.backend.dto;
 
-import jakarta.persistence.*;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
 
-@Entity
-@Table(name = "goals")
-public class Goal {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+public class GoalDto {
     private Long id;
-
     private String title;
     private String description;
     private String status;
-
-    @ManyToOne
-    @JoinColumn(name = "user_id")
-    private User user;
-
-    @ManyToOne
-    @JoinColumn(name = "parent_goal_id")
-    private Goal parentGoal;
-
-    @OneToMany(mappedBy = "parentGoal", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Goal> subGoals = new ArrayList<>();
-
+    private Long userId;
+    private Long parentGoalId;
     private LocalDate dueDate;
-
     private int maxHp;
     private int currentHp;
 
@@ -66,28 +46,20 @@ public class Goal {
         this.status = status;
     }
 
-    public User getUser() {
-        return user;
+    public Long getUserId() {
+        return userId;
     }
 
-    public void setUser(User user) {
-        this.user = user;
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 
-    public Goal getParentGoal() {
-        return parentGoal;
+    public Long getParentGoalId() {
+        return parentGoalId;
     }
 
-    public void setParentGoal(Goal parentGoal) {
-        this.parentGoal = parentGoal;
-    }
-
-    public List<Goal> getSubGoals() {
-        return subGoals;
-    }
-
-    public void setSubGoals(List<Goal> subGoals) {
-        this.subGoals = subGoals;
+    public void setParentGoalId(Long parentGoalId) {
+        this.parentGoalId = parentGoalId;
     }
 
     public LocalDate getDueDate() {

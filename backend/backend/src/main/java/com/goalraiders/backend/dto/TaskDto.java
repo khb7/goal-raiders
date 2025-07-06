@@ -1,34 +1,17 @@
-package com.goalraiders.backend;
+package com.goalraiders.backend.dto;
 
-import jakarta.persistence.*;
 import java.time.LocalDate;
 
-@Entity
-@Table(name = "tasks")
-public class Task {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+public class TaskDto {
     private Long id;
-
     private String title;
     private boolean completed;
-
+    private Long goalId;
     private int recurrenceDays;
     private LocalDate lastCompleted;
     private String difficulty;
-
-    @ManyToOne
-    @JoinColumn(name = "parent_task_id")
-    private Task parentTask;
-
-    @ManyToOne
-    @JoinColumn(name = "user_id")
-    private User user;
-
-    @ManyToOne
-    @JoinColumn(name = "goal_id")
-    private Goal goal;
+    private Long parentTaskId;
+    private Long userId;
 
     // Getters and Setters
     public Long getId() {
@@ -55,12 +38,12 @@ public class Task {
         this.completed = completed;
     }
 
-    public Goal getGoal() {
-        return goal;
+    public Long getGoalId() {
+        return goalId;
     }
 
-    public void setGoal(Goal goal) {
-        this.goal = goal;
+    public void setGoalId(Long goalId) {
+        this.goalId = goalId;
     }
 
     public int getRecurrenceDays() {
@@ -87,19 +70,19 @@ public class Task {
         this.difficulty = difficulty;
     }
 
-    public Task getParentTask() {
-        return parentTask;
+    public Long getParentTaskId() {
+        return parentTaskId;
     }
 
-    public void setParentTask(Task parentTask) {
-        this.parentTask = parentTask;
+    public void setParentTaskId(Long parentTaskId) {
+        this.parentTaskId = parentTaskId;
     }
 
-    public User getUser() {
-        return user;
+    public Long getUserId() {
+        return userId;
     }
 
-    public void setUser(User user) {
-        this.user = user;
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 }

@@ -23,8 +23,8 @@ function App() {
   const [bosses, setBosses] = useState([]); // Bosses state
   const [currentBossId, setCurrentBossId] = useState(null); // Current boss ID state
   const [newBossName, setNewBossName] = useState(''); // New boss name state
-  const [newBossHp, setNewBossHp] = useState(100); // New boss HP state
   const [selectedBossDifficulty, setSelectedBossDifficulty] = useState('Medium'); // New boss difficulty state
+  const [newBossDueDate, setNewBossDueDate] = useState(''); // New boss due date state
   const [showBossSettingsModal, setShowBossSettingsModal] = useState(false); // Boss settings modal state
   const [editingTaskId, setEditingTaskId] = useState(null); // Editing task ID state
   const [takingDamage, setTakingDamage] = useState(false); // Taking damage animation state
@@ -297,7 +297,6 @@ function App() {
     setBosses([]);
     setCurrentBossId(null);
     setNewBossName('');
-    setNewBossHp(100);
     setTasks([]);
     setTask('');
     setRecurrenceDays(0);
@@ -352,13 +351,14 @@ function App() {
       return;
     }
 
-    const finalBossHp = newBossHp > 0 && newBossHp !== 100 ? parseInt(newBossHp) : BOSS_HP_MAP[selectedBossDifficulty];
+    const finalBossHp = BOSS_HP_MAP[selectedBossDifficulty];
     const newBossData = {
       name: newBossName,
       maxHp: finalBossHp,
       currentHp: finalBossHp,
       userId: userId, // Associate boss with the current user
       parentId: selectedParentBoss || null, // Add parentId
+      dueDate: newBossDueDate || null, // Add dueDate
     };
 
     console.log("Attempting to add boss with data:", newBossData);
@@ -369,9 +369,9 @@ function App() {
       setBosses([...bosses, addedBoss]);
       setCurrentBossId(addedBoss.id);
       setNewBossName('');
-      setNewBossHp(100); // Reset to default for next time
       setSelectedBossDifficulty('Medium'); // Reset to default
       setSelectedParentBoss(''); // Reset parent boss selection
+      setNewBossDueDate(''); // Reset due date
       setShowBossSettingsModal(false); // Close modal after adding boss
     } catch (e) {
       console.error("Error adding document: ", e);
@@ -539,19 +539,7 @@ function App() {
                               placeholder="Enter new boss name"
                           />
                       </Form.Group>
-                      <Form.Group className="mb-3">
-                          <Form.Label htmlFor="newBossHpInput">New Boss Max HP:</Form.Label>
-                          <Form.Control
-                              type="number"
-                              id="newBossHpInput"
-                              value={newBossHp}
-                              onChange={(e) => setNewBossHp(e.target.value)}
-                              placeholder="Enter new boss HP (optional)"
-                          />
-                          <Form.Text className="text-muted">
-                              Leave blank to use HP based on selected difficulty.
-                          </Form.Text>
-                      </Form.Group>
+                      
                       <Form.Group className="mb-3">
                           <Form.Label htmlFor="bossDifficultySelect">Boss Difficulty:</Form.Label>
                           <Form.Select
@@ -563,6 +551,15 @@ function App() {
                                   <option key={difficulty} value={difficulty}>{difficulty}</option>
                               ))}
                           </Form.Select>
+                      </Form.Group>
+                      <Form.Group className="mb-3">
+                          <Form.Label htmlFor="newBossDueDateInput">Due Date (Optional):</Form.Label>
+                          <Form.Control
+                              type="date"
+                              id="newBossDueDateInput"
+                              value={newBossDueDate}
+                              onChange={(e) => setNewBossDueDate(e.target.value)}
+                          />
                       </Form.Group>
                   <Form.Group className="mb-3">
                           <Form.Label htmlFor="parentBossSelect">Parent Boss:</Form.Label>
@@ -597,7 +594,7 @@ function App() {
           </div>
 
           {currentBoss && (
-              <Boss bossName={currentBoss.name} currentHp={currentBoss.currentHp} maxHp={currentBoss.maxHp} takingDamage={takingDamage} />
+              <Boss bossName={currentBoss.name} currentHp={currentBoss.currentHp} maxHp={currentBoss.maxHp} takingDamage={takingDamage} dueDate={currentBoss.dueDate} />
           )}
 
           <div className="card">

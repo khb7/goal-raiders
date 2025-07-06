@@ -1,7 +1,10 @@
-feat: Implement Firebase authentication and user management
+feat: Implement sub-boss functionality and fix frontend issues
 
-- Resolve FirebaseApp initialization issue in BackendApplication.java.
-- Integrate Firebase Admin SDK and Spring Security for authentication.
-- Update GoalController, User, and UserRepository for Firebase user management.
-- Add TestController, SecurityConfig, and FirebaseAuthenticationFilter.
-- Update frontend (App.js) for Firebase ID token handling.
+- Backend:
+  - Modified Goal, GoalController, GoalRepository for potential future sub-boss integration (though not directly used in this commit).
+  - Removed HelloController.
+- Frontend:
+  - Added sub-boss functionality with parentId for bosses.
+  - Implemented hierarchical display of bosses in the UI.
+  - Fixed multiple `no-undef` and syntax errors in App.js and index.js.
+  - Cleaned up redundant "New Game" button.
