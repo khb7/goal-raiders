@@ -1,10 +1,9 @@
 package com.goalraiders.backend;
 
 import com.goalraiders.backend.dto.TaskDto;
+import com.goalraiders.backend.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -23,22 +22,11 @@ public class TaskController {
     private GoalRepository goalRepository;
 
     @Autowired
-    private UserRepository userRepository;
+    private UserService userService;
 
     // 현재 인증된 사용자 가져오기 또는 생성
     private User getOrCreateCurrentUser() {
-        String firebaseUid = ((UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getUsername();
-        Optional<User> existingUser = userRepository.findByFirebaseUid(firebaseUid);
-
-        if (existingUser.isPresent()) {
-            return existingUser.get();
-        } else {
-            User newUser = new User();
-            newUser.setFirebaseUid(firebaseUid);
-            newUser.setUsername("User_" + firebaseUid.substring(0, 8));
-            newUser.setEmail(firebaseUid + "@example.com");
-            return userRepository.save(newUser);
-        }
+        return userService.getOrCreateCurrentUser();
     }
 
     // Task 엔티티를 DTO로 변환
