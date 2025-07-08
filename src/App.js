@@ -235,45 +235,57 @@ function App() {
   };
 
   const loadData = useCallback(async () => {
+    console.log("loadData called.");
     if (userId && idToken) {
+      console.log("userId and idToken are present. Proceeding with fetch.");
       try {
         // Load bosses from backend
+        console.log("Fetching bosses from /api/goals...");
         const bossesResponse = await fetch('http://localhost:8080/api/goals', {
           headers: {
             'Authorization': `Bearer ${idToken}`,
           },
         });
+        console.log("Bosses fetch response status:", bossesResponse.status, "ok:", bossesResponse.ok);
         if (bossesResponse.ok) {
           const fetchedBosses = await bossesResponse.json();
+          console.log("Fetched bosses data:", fetchedBosses);
           setBosses(fetchedBosses);
           if (fetchedBosses.length > 0) {
             setCurrentBossId(fetchedBosses[0].id); // Set first boss as current
           }
         } else {
-          console.error("Failed to fetch bosses:", await bossesResponse.text());
+          console.error("Failed to fetch bosses:", bossesResponse.status, await bossesResponse.text());
         }
 
         // Load tasks from backend
+        console.log("Fetching tasks from /api/tasks...");
         const tasksResponse = await fetch('http://localhost:8080/api/tasks', {
           headers: {
             'Authorization': `Bearer ${idToken}`,
           },
         });
+        console.log("Tasks fetch response status:", tasksResponse.status, "ok:", tasksResponse.ok);
         if (tasksResponse.ok) {
           const fetchedTasks = await tasksResponse.json();
+          console.log("Fetched tasks data:", fetchedTasks);
           setTasks(fetchedTasks.map(t => ({ ...t, name: t.title }))); // Map title to name for consistency
         } else {
-          console.error("Failed to fetch tasks:", await tasksResponse.text());
+          console.error("Failed to fetch tasks:", tasksResponse.status, await tasksResponse.text());
         }
       } catch (error) {
         console.error("Error loading data:", error);
       }
+    } else {
+      console.log("userId or idToken not present. Skipping fetch.", { userId, idToken });
     }
   }, [userId, idToken]);
 
-  
-
-  
+  useEffect(() => {
+    if (userId && idToken) {
+      loadData();
+    }
+  }, [userId, idToken, loadData]);
 
   useEffect(() => {
     if ("Notification" in window) {
