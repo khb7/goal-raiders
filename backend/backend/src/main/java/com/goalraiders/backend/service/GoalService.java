@@ -5,6 +5,8 @@ import com.goalraiders.backend.GoalRepository;
 import com.goalraiders.backend.User;
 import com.goalraiders.backend.config.GameConfigProperties;
 import com.goalraiders.backend.dto.GoalDto;
+import com.goalraiders.backend.exception.InvalidInputException;
+import com.goalraiders.backend.exception.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -30,13 +32,14 @@ public class GoalService {
         return goals.stream().map(this::convertToDto).collect(Collectors.toList());
     }
 
-    public Optional<GoalDto> getGoalById(Long id) {
+    public GoalDto getGoalById(Long id) {
         User currentUser = userService.getOrCreateCurrentUser();
-        Optional<Goal> goal = goalRepository.findById(id);
-        if (goal.isEmpty() || !goal.get().getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
-            return Optional.empty();
+        Goal goal = goalRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Goal not found with id " + id));
+        if (!goal.getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
+            throw new ResourceNotFoundException("Goal not found with id " + id); // Or AccessDeniedException
         }
-        return Optional.of(convertToDto(goal.get()));
+        return convertToDto(goal);
     }
 
     public GoalDto createGoal(GoalDto goalDto) {
@@ -55,7 +58,7 @@ public class GoalService {
         if (goalDto.getParentGoalId() != null) {
             Optional<Goal> parentGoal = goalRepository.findById(Long.parseLong(goalDto.getParentGoalId()));
             if (parentGoal.isEmpty() || !parentGoal.get().getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
-                throw new IllegalArgumentException("Invalid parent goal id");
+                throw new InvalidInputException("Invalid parent goal id: " + goalDto.getParentGoalId());
             }
             goal.setParentGoal(parentGoal.get());
         }
@@ -64,15 +67,15 @@ public class GoalService {
         return convertToDto(savedGoal);
     }
 
-    public Optional<GoalDto> updateGoal(Long id, GoalDto goalDto) {
+    public GoalDto updateGoal(Long id, GoalDto goalDto) {
         User currentUser = userService.getOrCreateCurrentUser();
-        Optional<Goal> existingGoal = goalRepository.findById(id);
+        Goal goalToUpdate = goalRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Goal not found with id " + id));
 
-        if (existingGoal.isEmpty() || !existingGoal.get().getUser().getId().equals(currentUser.getId())) {
-            return Optional.empty();
+        if (!goalToUpdate.getUser().getId().equals(currentUser.getId())) {
+            throw new ResourceNotFoundException("Goal not found with id " + id); // Or AccessDeniedException
         }
 
-        Goal goalToUpdate = existingGoal.get();
         goalToUpdate.setTitle(goalDto.getTitle());
         goalToUpdate.setDescription(goalDto.getDescription());
         goalToUpdate.setStatus(goalDto.getStatus());
@@ -83,7 +86,7 @@ public class GoalService {
         if (goalDto.getParentGoalId() != null) {
             Optional<Goal> parentGoal = goalRepository.findById(Long.parseLong(goalDto.getParentGoalId()));
             if (parentGoal.isEmpty() || !parentGoal.get().getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
-                 throw new IllegalArgumentException("Invalid parent goal id");
+                 throw new InvalidInputException("Invalid parent goal id: " + goalDto.getParentGoalId());
             }
             goalToUpdate.setParentGoal(parentGoal.get());
         } else {
@@ -91,36 +94,36 @@ public class GoalService {
         }
 
         Goal updatedGoal = goalRepository.save(goalToUpdate);
-        return Optional.of(convertToDto(updatedGoal));
+        return convertToDto(updatedGoal);
     }
 
-    public boolean deleteGoal(Long id) {
+    public void deleteGoal(Long id) {
         User currentUser = userService.getOrCreateCurrentUser();
-        Optional<Goal> goal = goalRepository.findById(id);
+        Goal goal = goalRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Goal not found with id " + id));
 
-        if (goal.isEmpty() || !goal.get().getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
-            return false;
+        if (!goal.getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
+            throw new ResourceNotFoundException("Goal not found with id " + id); // Or AccessDeniedException
         }
 
-        goalRepository.delete(goal.get());
-        return true;
+        goalRepository.delete(goal);
     }
 
-    public Optional<GoalDto> applyDamageToGoal(Long goalId, String difficulty) {
+    public GoalDto applyDamageToGoal(Long goalId, String difficulty) {
         User currentUser = userService.getOrCreateCurrentUser();
-        Optional<Goal> goalOptional = goalRepository.findById(goalId);
+        Goal goal = goalRepository.findById(goalId)
+                .orElseThrow(() -> new ResourceNotFoundException("Goal not found with id " + goalId));
 
-        if (goalOptional.isEmpty() || !goalOptional.get().getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
-            return Optional.empty();
+        if (!goal.getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
+            throw new ResourceNotFoundException("Goal not found with id " + goalId); // Or AccessDeniedException
         }
 
-        Goal goal = goalOptional.get();
         int damage = gameConfigProperties.getDifficultyDamageMap().getOrDefault(difficulty, 0);
         int newHp = goal.getCurrentHp() - damage;
         goal.setCurrentHp(Math.max(0, newHp));
 
         Goal updatedGoal = goalRepository.save(goal);
-        return Optional.of(convertToDto(updatedGoal));
+        return convertToDto(updatedGoal);
     }
 
     private GoalDto convertToDto(Goal goal) {
