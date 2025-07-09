@@ -23,4 +23,5 @@ yarn-debug.log*
 yarn-error.log*
 
 # H2 Database
+commit_message.txt
 backend/backend/data/

@@ -50,19 +50,30 @@ function App() {
     return () => unsubscribe(); // Cleanup subscription on unmount
   }, []);
 
-  const DIFFICULTY_DAMAGE_MAP = {
-    Easy: 5,
-    Medium: 10,
-    Hard: 20,
-    Epic: 50,
-  };
+  const [gameConfig, setGameConfig] = useState({
+    difficultyDamageMap: {},
+    bossHpMap: {},
+  });
 
-  const BOSS_HP_MAP = {
-    Easy: 50,
-    Medium: 100,
-    Hard: 200,
-    Epic: 500,
-  };
+  useEffect(() => {
+    const fetchGameConfig = async () => {
+      try {
+        const response = await fetch('http://localhost:8080/api/config/game');
+        if (response.ok) {
+          const config = await response.json();
+          setGameConfig({
+            difficultyDamageMap: config.difficultyDamageMap || {},
+            bossHpMap: config.bossHpMap || {},
+          });
+        } else {
+          console.error("Failed to fetch game config");
+        }
+      } catch (error) {
+        console.error("Error fetching game config:", error);
+      }
+    };
+    fetchGameConfig();
+  }, []);
 
   const currentBoss = currentBossId ? bosses.find(boss => boss.id === currentBossId) : null;
   const isVictory = currentBoss && currentBoss.currentHp <= 0;
@@ -451,8 +462,8 @@ function App() {
 
     const bossData = {
       title: newBossName,
-      maxHp: BOSS_HP_MAP[selectedBossDifficulty],
-      currentHp: BOSS_HP_MAP[selectedBossDifficulty],
+      maxHp: gameConfig.bossHpMap[selectedBossDifficulty],
+      currentHp: gameConfig.bossHpMap[selectedBossDifficulty],
       userId: userId,
       parentGoalId: selectedParentBoss || null,
       dueDate: newBossDueDate || null,
