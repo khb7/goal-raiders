@@ -11,7 +11,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AuthPage from './pages/AuthPage';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCa1IjbERqDUnjYBm7dIX9c-cOqIorsdM8",
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
   authDomain: "goal-raiders-20250702.firebaseapp.com",
   projectId: "goal-raiders-20250702",
   storageBucket: "goal-raiders-20250702.firebasestorage.app",
