@@ -4,10 +4,25 @@ import { Modal, Button, Form } from 'react-bootstrap'; // Import Modal, Button, 
 
 
 
+import './App.css';
 import { auth } from './index'; // auth 객체 import
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import Boss from './Boss';
+
+const DIFFICULTY_DAMAGE_MAP = {
+  Easy: 10,
+  Medium: 20,
+  Hard: 30,
+  "Very Hard": 50,
+};
+
+const BOSS_DIFFICULTY_COLOR_MAP = {
+  Easy: '#2E7D32',
+  Medium: '#673AB7',
+  Hard: '#C62828',
+  "Very Hard": '#212121',
+};
 
 function App() {
   
@@ -23,7 +38,14 @@ function App() {
   const [newBossName, setNewBossName] = useState(''); // New boss name state
   const [selectedBossDifficulty, setSelectedBossDifficulty] = useState('Medium'); // New boss difficulty state
   const [newBossDueDate, setNewBossDueDate] = useState(''); // New boss due date state
-  const [showBossSettingsModal, setShowBossSettingsModal] = useState(false); // Boss settings modal state
+  const [showAddBossModal, setShowAddBossModal] = useState(false); // Add boss modal state
+  const [showEditBossModal, setShowEditBossModal] = useState(false); // Edit boss modal state
+  const [editingBossId, setEditingBossId] = useState(null); // ID of boss being edited
+  const [editingBossName, setEditingBossName] = useState(''); // Name of boss being edited
+  const [editingBossDifficulty, setEditingBossDifficulty] = useState('Medium'); // Difficulty of boss being edited
+  const [editingBossDueDate, setEditingBossDueDate] = useState(''); // Due date of boss being edited
+  const [editingParentBoss, setEditingParentBoss] = useState(''); // Parent boss of boss being edited
+  const [showBossSelectionModal, setShowBossSelectionModal] = useState(false); // Boss selection modal state
   const [editingTaskId, setEditingTaskId] = useState(null); // Editing task ID state
   const [takingDamage, setTakingDamage] = useState(false); // Taking damage animation state
 
@@ -262,8 +284,21 @@ function App() {
           const fetchedBosses = await bossesResponse.json();
           console.log("Fetched bosses data:", fetchedBosses);
           setBosses(fetchedBosses);
-          if (fetchedBosses.length > 0) {
-            setCurrentBossId(fetchedBosses[0].id); // Set first boss as current
+          // Try to keep the current boss selected
+          const previouslySelectedBoss = fetchedBosses.find(boss => boss.id === currentBossId);
+          if (previouslySelectedBoss && previouslySelectedBoss.currentHp > 0) {
+            setCurrentBossId(previouslySelectedBoss.id);
+          } else if (fetchedBosses.length > 0) {
+            // If previous boss is defeated or not found, find the first active boss
+            const firstActiveBoss = fetchedBosses.find(boss => boss.currentHp > 0);
+            if (firstActiveBoss) {
+              setCurrentBossId(firstActiveBoss.id);
+            } else {
+              // If no active bosses, select the first one (even if defeated)
+              setCurrentBossId(fetchedBosses[0].id);
+            }
+          } else {
+            setCurrentBossId(null); // No bosses available
           }
         } else {
           console.error("Failed to fetch bosses:", bossesResponse.status, await bossesResponse.text());
@@ -460,10 +495,17 @@ function App() {
       return;
     }
 
+    // Ensure gameConfig.bossHpMap is loaded
+    const maxHp = gameConfig.bossHpMap[selectedBossDifficulty];
+    if (!maxHp) {
+      alert('게임 설정이 아직 로드되지 않았습니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+
     const bossData = {
       title: newBossName,
-      maxHp: gameConfig.bossHpMap[selectedBossDifficulty],
-      currentHp: gameConfig.bossHpMap[selectedBossDifficulty],
+      maxHp: maxHp,
+      currentHp: maxHp,
       userId: userId,
       parentGoalId: selectedParentBoss || null,
       dueDate: newBossDueDate || null,
@@ -481,14 +523,15 @@ function App() {
       });
 
       if (response.ok) {
-        const addedBoss = await response.json();
-        setBosses([...bosses, addedBoss]);
-        setCurrentBossId(addedBoss.id);
+        // Reload all data to ensure UI is in sync with backend
+        await loadData(); 
+
+        // Reset form and close modal
         setNewBossName('');
         setSelectedBossDifficulty('Medium');
         setSelectedParentBoss('');
         setNewBossDueDate('');
-        setShowBossSettingsModal(false);
+        setShowAddBossModal(false);
       } else {
         const errorText = await response.text();
         console.error("Error adding boss:", errorText);
@@ -497,6 +540,92 @@ function App() {
     } catch (e) {
       console.error("Error adding boss:", e);
       alert(`Failed to add boss: ${e.message}`);
+    }
+  };
+
+  const editBoss = async () => {
+    if (!editingBossId) {
+      alert('수정할 보스를 선택해주세요.');
+      return;
+    }
+    if (!editingBossName) {
+      alert('보스 이름을 입력해주세요.');
+      return;
+    }
+    if (!userId || !idToken) {
+      alert('로그인 후 보스를 수정할 수 있습니다.');
+      return;
+    }
+
+    const bossData = {
+      title: editingBossName,
+      // HP는 변경하지 않고 기존 값을 유지하거나, 필요하다면 백엔드에서 처리
+      // maxHp: gameConfig.bossHpMap[editingBossDifficulty],
+      // currentHp: gameConfig.bossHpMap[editingBossDifficulty],
+      userId: userId,
+      parentGoalId: editingParentBoss || null,
+      dueDate: editingBossDueDate || null,
+      status: editingBossDifficulty, // Using difficulty as status for now
+    };
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/goals/${editingBossId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify(bossData),
+      });
+
+      if (response.ok) {
+        await loadData(); // Reload all data to ensure UI is in sync with backend
+        setShowEditBossModal(false);
+      } else {
+        const errorText = await response.text();
+        console.error("Error editing boss:", errorText);
+        alert(`Failed to edit boss: ${errorText}`);
+      }
+    } catch (e) {
+      console.error("Error editing boss:", e);
+      alert(`Failed to edit boss: ${e.message}`);
+    }
+  };
+
+  const deleteBoss = async () => {
+    if (!editingBossId) {
+      alert('삭제할 보스를 선택해주세요.');
+      return;
+    }
+    if (!userId || !idToken) {
+      alert('로그인 후 보스를 삭제할 수 있습니다.');
+      return;
+    }
+
+    if (!window.confirm('정말로 이 보스를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/goals/${editingBossId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
+
+      if (response.ok) {
+        await loadData(); // Reload all data to ensure UI is in sync with backend
+        setShowEditBossModal(false);
+        setCurrentBossId(null); // Clear current boss if deleted
+      } else {
+        const errorText = await response.text();
+        console.error("Error deleting boss:", errorText);
+        alert(`Failed to delete boss: ${errorText}`);
+      }
+    } catch (e) {
+      console.error("Error deleting boss:", e);
+      alert(`Failed to delete boss: ${e.message}`);
     }
   };
 
@@ -563,7 +692,10 @@ function App() {
         <React.Fragment key={boss.id}>
           <li
             className={`list-group-item d-flex justify-content-between align-items-center ${boss.id === currentBossId ? 'active' : ''}`}
-            style={{ paddingLeft: `${20 + indent * 20}px` }}
+            style={{
+              paddingLeft: `${20 + indent * 20}px`,
+              backgroundColor: BOSS_DIFFICULTY_COLOR_MAP[boss.status] || 'transparent',
+            }}
             onClick={() => setCurrentBossId(boss.id)}
           >
             {boss.title} ({boss.currentHp} / {boss.maxHp} HP)
@@ -579,7 +711,7 @@ function App() {
   return (
     <div className="container-fluid mt-3 app-main-background d-flex flex-column min-vh-100">
       {/* Header */}
-      <div className="row mb-3">
+      <div className="row mb-3 app-header-container">
         <div className="col-md-12 p-3 d-flex justify-content-between align-items-center">
           <h1 className="h3 mb-0">Goal Raiders</h1>
           <div>
@@ -598,7 +730,7 @@ function App() {
         </div>
       </div>
           {currentBoss && (
-            <div>
+            <div className="boss-status-container">
               <div className="d-flex align-items-center">
                 <span className="me-2">Current Boss: <strong>{currentBoss.title}</strong></span>
                 <div className="progress" style={{ width: '150px', height: '20px' }}>
@@ -615,7 +747,7 @@ function App() {
               </div>
             </div>
           )}
-      <div className="bg-light p-4 mb-4 rounded-3">
+      <div className="p-4 mb-4 rounded-3 dashboard-header">
         <div className="container-fluid">
           <h1 className="display-5 fw-bold">Dashboard</h1>
           <p className="col-md-8 fs-4">오늘의 목표를 달성하고 보스를 물리치세요!</p>
@@ -639,15 +771,43 @@ function App() {
 
         {/* Main Content */}
         <div className="col-md-6 main-content-container">
-          <div className="mb-4">
-              <Button variant="primary" onClick={() => setShowBossSettingsModal(true)}>
-                  Boss Settings
+          <div className="mb-4 d-flex justify-content-between">
+              <Button variant="primary" onClick={() => setShowAddBossModal(true)}>
+                  Add New Boss
+              </Button>
+              <Button variant="secondary" onClick={() => setShowBossSelectionModal(true)}>
+                  Change Boss
               </Button>
           </div>
 
-          <Modal show={showBossSettingsModal} onHide={() => setShowBossSettingsModal(false)}>
+          {/* Boss Selection Modal */}
+          <Modal show={showBossSelectionModal} onHide={() => setShowBossSelectionModal(false)}>
               <Modal.Header closeButton>
-                  <Modal.Title>Boss Settings</Modal.Title>
+                  <Modal.Title>Select a Boss</Modal.Title>
+              </Modal.Header>
+              <Modal.Body>
+                  <ul className="list-group">
+                      {bosses.map(boss => (
+                          <li 
+                              key={boss.id} 
+                              className="list-group-item list-group-item-action" 
+                              onClick={() => { 
+                                  setCurrentBossId(boss.id); 
+                                  setShowBossSelectionModal(false); 
+                              }}
+                              style={{cursor: 'pointer'}}
+                          >
+                              {boss.title} ({boss.currentHp} / {boss.maxHp} HP)
+                          </li>
+                      ))}
+                  </ul>
+              </Modal.Body>
+          </Modal>
+
+          {/* Add New Boss Modal */}
+          <Modal show={showAddBossModal} onHide={() => setShowAddBossModal(false)}>
+              <Modal.Header closeButton>
+                  <Modal.Title>Add New Boss</Modal.Title>
               </Modal.Header>
               <Modal.Body>
                   <Form>
@@ -692,18 +852,84 @@ function App() {
                           >
                               <option value="">No Parent Boss</option>
                               {bosses.map(boss => (
-                                  <option key={boss.id} value={boss.id}>{boss.name}</option>
+                                  <option key={boss.id} value={boss.id}>{boss.title}</option>
                               ))}
                           </Form.Select>
                       </Form.Group>
                   </Form>
               </Modal.Body>
               <Modal.Footer>
-                  <Button variant="secondary" onClick={() => setShowBossSettingsModal(false)}>
+                  <Button variant="secondary" onClick={() => setShowAddBossModal(false)}>
                       Cancel
                   </Button>
                   <Button variant="primary" onClick={addBoss}>
                       Add Boss
+                  </Button>
+              </Modal.Footer>
+          </Modal>
+
+          {/* Edit Current Boss Modal */}
+          <Modal show={showEditBossModal} onHide={() => setShowEditBossModal(false)}>
+              <Modal.Header closeButton>
+                  <Modal.Title>Edit Boss</Modal.Title>
+              </Modal.Header>
+              <Modal.Body>
+                  <Form>
+                      <Form.Group className="mb-3">
+                          <Form.Label htmlFor="editBossNameInput">Boss Name:</Form.Label>
+                          <Form.Control
+                              type="text"
+                              id="editBossNameInput"
+                              value={editingBossName}
+                              onChange={(e) => setEditingBossName(e.target.value)}
+                          />
+                      </Form.Group>
+                      
+                      <Form.Group className="mb-3">
+                          <Form.Label htmlFor="editBossDifficultySelect">Boss Difficulty:</Form.Label>
+                          <Form.Select
+                              id="editBossDifficultySelect"
+                              value={editingBossDifficulty}
+                              onChange={(e) => setEditingBossDifficulty(e.target.value)}
+                          >
+                              {Object.keys(DIFFICULTY_DAMAGE_MAP).map(difficulty => (
+                                  <option key={difficulty} value={difficulty}>{difficulty}</option>
+                              ))}
+                          </Form.Select>
+                      </Form.Group>
+                      <Form.Group className="mb-3">
+                          <Form.Label htmlFor="editBossDueDateInput">Due Date (Optional):</Form.Label>
+                          <Form.Control
+                              type="date"
+                              id="editBossDueDateInput"
+                              value={editingBossDueDate}
+                              onChange={(e) => setEditingBossDueDate(e.target.value)}
+                          />
+                      </Form.Group>
+                  <Form.Group className="mb-3">
+                          <Form.Label htmlFor="editParentBossSelect">Parent Boss:</Form.Label>
+                          <Form.Select
+                              id="editParentBossSelect"
+                              value={editingParentBoss}
+                              onChange={(e) => setEditingParentBoss(e.target.value)}
+                          >
+                              <option value="">No Parent Boss</option>
+                              {bosses.filter(boss => boss.id !== editingBossId).map(boss => (
+                                  <option key={boss.id} value={boss.id}>{boss.title}</option>
+                              ))}
+                          </Form.Select>
+                      </Form.Group>
+                  </Form>
+              </Modal.Body>
+              <Modal.Footer>
+                  <Button variant="danger" onClick={deleteBoss}>
+                      Delete Boss
+                  </Button>
+                  <Button variant="secondary" onClick={() => setShowEditBossModal(false)}>
+                      Cancel
+                  </Button>
+                  <Button variant="primary" onClick={editBoss}>
+                      Save Changes
                   </Button>
               </Modal.Footer>
           </Modal>
@@ -716,7 +942,26 @@ function App() {
           </div>
 
           {currentBoss && (
-              <Boss bossName={currentBoss.title} currentHp={currentBoss.currentHp} maxHp={currentBoss.maxHp} takingDamage={takingDamage} dueDate={currentBoss.dueDate} />
+            <div 
+              className="boss-display-area p-3 rounded-3 mb-4"
+              style={{ position: 'relative', backgroundColor: BOSS_DIFFICULTY_COLOR_MAP[currentBoss.status] || 'transparent' }}
+            >
+              <Boss bossId={currentBoss.id} bossName={currentBoss.title} currentHp={currentBoss.currentHp} maxHp={currentBoss.maxHp} takingDamage={takingDamage} dueDate={currentBoss.dueDate} />
+              <button
+                className="boss-edit-button"
+                onClick={() => {
+                  setEditingBossId(currentBoss.id);
+                  setEditingBossName(currentBoss.title);
+                  setEditingBossDifficulty(currentBoss.status);
+                  setEditingBossDueDate(currentBoss.dueDate || '');
+                  setEditingParentBoss(currentBoss.parentGoalId || '');
+                  setShowEditBossModal(true);
+                }}
+                style={{ position: 'absolute', top: '10px', right: '10px' }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="feather feather-settings"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0-.33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1.51-1V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+              </button>
+            </div>
           )}
 
           <div className="card">
