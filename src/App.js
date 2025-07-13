@@ -48,6 +48,16 @@ function App() {
   const [showBossSelectionModal, setShowBossSelectionModal] = useState(false); // Boss selection modal state
   const [editingTaskId, setEditingTaskId] = useState(null); // Editing task ID state
   const [takingDamage, setTakingDamage] = useState(false); // Taking damage animation state
+  const [userInfo, setUserInfo] = useState(null); // User Level and XP
+  const [playerHp, setPlayerHp] = useState(100); // Player HP state (temporary)
+  const [collapsedBosses, setCollapsedBosses] = useState({}); // State to manage collapsed bosses
+
+  const toggleBossCollapse = (bossId) => {
+    setCollapsedBosses(prev => ({
+      ...prev,
+      [bossId]: !prev[bossId]
+    }));
+  };
 
   const [user, setUser] = useState(null); // User state for login status
   const [idToken, setIdToken] = useState(null); // Firebase ID Token
@@ -101,6 +111,10 @@ function App() {
   const isVictory = currentBoss && currentBoss.currentHp <= 0;
 
   const saveTask = async () => {
+    if (!currentBossId) {
+      alert("Please select a boss before adding a task.");
+      return;
+    }
     if (task && userId) { // Ensure userId is available
       const taskData = {
         title: task,
@@ -319,6 +333,21 @@ function App() {
         } else {
           console.error("Failed to fetch tasks:", tasksResponse.status, await tasksResponse.text());
         }
+
+        // Load user info from backend
+        console.log("Fetching user info from /api/user/me...");
+        const userResponse = await fetch('http://localhost:8080/api/user/me', {
+            headers: {
+                'Authorization': `Bearer ${idToken}`,
+            },
+        });
+        if (userResponse.ok) {
+            const fetchedUser = await userResponse.json();
+            setUserInfo(fetchedUser);
+        } else {
+            console.error("Failed to fetch user info:", userResponse.status, await userResponse.text());
+        }
+
       } catch (error) {
         console.error("Error loading data:", error);
       }
@@ -685,27 +714,68 @@ function App() {
 
   
 
-  const renderBosses = (bossList, parentId = null, indent = 0) => {
-    return bossList
-      .filter(boss => boss.parentId === parentId)
-      .map(boss => (
-        <React.Fragment key={boss.id}>
-          <li
-            className={`list-group-item d-flex justify-content-between align-items-center ${boss.id === currentBossId ? 'active' : ''}`}
-            style={{
-              paddingLeft: `${20 + indent * 20}px`,
-              backgroundColor: BOSS_DIFFICULTY_COLOR_MAP[boss.status] || 'transparent',
-            }}
-            onClick={() => setCurrentBossId(boss.id)}
-          >
-            {boss.title} ({boss.currentHp} / {boss.maxHp} HP)
-            <div>
-              {/* Add boss specific actions here if needed */}
-            </div>
-          </li>
-          {renderBosses(bossList, boss.id, indent + 1)}
-        </React.Fragment>
-      ));
+  const renderBosses = (bossList, allTasks, parentId = null, indent = 0) => {
+    const unassignedTasks = allTasks.filter(task => task.goalId === null || task.goalId === undefined);
+
+    return (
+      <>
+        {parentId === null && unassignedTasks.length > 0 && (
+          <React.Fragment key="unassigned-boss">
+            <li
+              className={`list-group-item d-flex justify-content-between align-items-center`}
+              style={{ paddingLeft: `${20 + indent * 20}px`, backgroundColor: '#f0f0f0' }}
+            >
+              Unassigned Tasks
+            </li>
+            <ul className="list-group list-group-flush">
+              {renderTasks(unassignedTasks, null, indent + 1)}
+            </ul>
+          </React.Fragment>
+        )}
+        {bossList
+          .filter(boss => boss.parentGoalId === parentId)
+          .map(boss => {
+            const bossTasks = allTasks.filter(task => task.goalId === boss.id);
+            const isCollapsed = collapsedBosses[boss.id];
+            return (
+              <React.Fragment key={boss.id}>
+                <li
+                  className={`list-group-item d-flex justify-content-between align-items-center ${boss.id === currentBossId ? 'active' : ''}`}
+                  style={{
+                    paddingLeft: `${20 + indent * 20}px`,
+                    backgroundColor: BOSS_DIFFICULTY_COLOR_MAP[boss.status] || 'transparent',
+                  }}
+                >
+                  <span onClick={() => setCurrentBossId(boss.id)} style={{ cursor: 'pointer' }}>
+                    {boss.title} ({boss.currentHp} / {boss.maxHp} HP)
+                  </span>
+                  <div>
+                    <button
+                      className="btn btn-sm btn-outline-secondary ms-2"
+                      onClick={() => toggleBossCollapse(boss.id)}
+                    >
+                      {isCollapsed ? 'Expand' : 'Collapse'}
+                    </button>
+                    {/* Add boss specific actions here if needed */}
+                  </div>
+                </li>
+                {!isCollapsed && (
+                  <ul className="list-group list-group-flush">
+                    {bossTasks.length > 0 ? (
+                      renderTasks(bossTasks, null, indent + 1)
+                    ) : (
+                      <li className="list-group-item text-muted" style={{ paddingLeft: `${20 + (indent + 1) * 20}px` }}>
+                        No tasks for this boss.
+                      </li>
+                    )}
+                    {renderBosses(bossList, allTasks, boss.id, indent + 1)}
+                  </ul>
+                )}
+              </React.Fragment>
+            );
+          })}
+      </>
+    );
   };
 
   return (
@@ -714,16 +784,6 @@ function App() {
       <div className="row mb-3 app-header-container">
         <div className="col-md-12 p-3 d-flex justify-content-between align-items-center">
           <h1 className="h3 mb-0">Goal Raiders</h1>
-          <div>
-            {user ? (
-              <>
-                <span className="me-2">Welcome, {user.email}</span>
-                <button className="btn btn-outline-secondary btn-sm" onClick={handleSignOut}>Logout</button>
-              </>
-            ) : (
-              <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/auth')}>Login / Sign Up</button>
-            )}
-          </div>
           <div>
             <button className="btn btn-outline-primary btn-sm" onClick={resetGame}>New Game</button>
           </div>
@@ -771,38 +831,27 @@ function App() {
 
         {/* Main Content */}
         <div className="col-md-6 main-content-container">
-          <div className="mb-4 d-flex justify-content-between">
+          <div className="mb-4 d-flex justify-content-between align-items-center">
               <Button variant="primary" onClick={() => setShowAddBossModal(true)}>
                   Add New Boss
               </Button>
-              <Button variant="secondary" onClick={() => setShowBossSelectionModal(true)}>
-                  Change Boss
-              </Button>
+              <Form.Group className="mb-0"> {/* Use mb-0 to reduce margin */}
+                <Form.Label htmlFor="currentBossSelect" className="me-2 mb-0">Select Current Boss:</Form.Label>
+                <Form.Select
+                  id="currentBossSelect"
+                  value={currentBossId || ''} // Handle null currentBossId
+                  onChange={(e) => setCurrentBossId(e.target.value ? parseInt(e.target.value, 10) : null)}
+                  style={{ width: '200px', display: 'inline-block' }} // Adjust styling as needed
+                >
+                  <option value="">-- Select a Boss --</option>
+                  {bosses.map(boss => (
+                    <option key={boss.id} value={boss.id}>
+                      {boss.title} ({boss.currentHp} / {boss.maxHp} HP)
+                    </option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
           </div>
-
-          {/* Boss Selection Modal */}
-          <Modal show={showBossSelectionModal} onHide={() => setShowBossSelectionModal(false)}>
-              <Modal.Header closeButton>
-                  <Modal.Title>Select a Boss</Modal.Title>
-              </Modal.Header>
-              <Modal.Body>
-                  <ul className="list-group">
-                      {bosses.map(boss => (
-                          <li 
-                              key={boss.id} 
-                              className="list-group-item list-group-item-action" 
-                              onClick={() => { 
-                                  setCurrentBossId(boss.id); 
-                                  setShowBossSelectionModal(false); 
-                              }}
-                              style={{cursor: 'pointer'}}
-                          >
-                              {boss.title} ({boss.currentHp} / {boss.maxHp} HP)
-                          </li>
-                      ))}
-                  </ul>
-              </Modal.Body>
-          </Modal>
 
           {/* Add New Boss Modal */}
           <Modal show={showAddBossModal} onHide={() => setShowAddBossModal(false)}>
@@ -890,7 +939,7 @@ function App() {
                           <Form.Select
                               id="editBossDifficultySelect"
                               value={editingBossDifficulty}
-                              onChange={(e) => setEditingBossDifficulty(e.target.value)}
+                              onChange={(e) => setSelectedBossDifficulty(e.target.value)}
                           >
                               {Object.keys(DIFFICULTY_DAMAGE_MAP).map(difficulty => (
                                   <option key={difficulty} value={difficulty}>{difficulty}</option>
@@ -934,13 +983,6 @@ function App() {
               </Modal.Footer>
           </Modal>
 
-          <div className="mb-4">
-              <h3 className="card-title">Bosses</h3>
-              <ul className="list-group">
-                  {renderBosses(bosses)}
-              </ul>
-          </div>
-
           {currentBoss && (
             <div 
               className="boss-display-area p-3 rounded-3 mb-4"
@@ -964,67 +1006,84 @@ function App() {
             </div>
           )}
 
-          <div className="card">
-              <div className="card-body">
-                  <h3 className="card-title">Tasks (Your Attacks)</h3>
-                  <div className="input-group mb-3">
-                      <input
-                      type="text"
-                      className="form-control"
-                      value={task}
-                      onChange={(e) => setTask(e.target.value)}
-                      placeholder="Enter a new task to damage the boss"
-                      onKeyPress={(e) => e.key === 'Enter' && saveTask()}
-                      />
-                  </div>
-                  <div className="input-group mb-3">
-                      <input
-                          type="number"
-                          className="form-control"
-                          value={recurrenceDays}
-                          onChange={(e) => setRecurrenceDays(e.target.value)}
-                          placeholder="Recurrence (days, 0 for none)"
-                      />
-                  </div>
-                  <div className="input-group mb-3">
-                      <select
-                          className="form-select"
-                          value={selectedDifficulty}
-                          onChange={(e) => setSelectedDifficulty(e.target.value)}
-                      >
-                          {Object.keys(DIFFICULTY_DAMAGE_MAP).map(difficulty => (
-                              <option key={difficulty} value={difficulty}>{difficulty}</option>
-                          ))}
-                      </select>
-                  </div>
-                  <div className="input-group mb-3">
-                      <select
-                          className="form-select"
-                          value={selectedParentTask}
-                          onChange={(e) => setSelectedParentTask(e.target.value)}
-                      >
-                          <option value="">No Parent Task</option>
-                          {tasks.filter(t => t.bossId === currentBossId).map(t => (
-                              <option key={t.id} value={t.id}>{t.name}</option>
-                          ))}
-                      </select>
-                      <button className="btn btn-primary" onClick={saveTask}>
-                      {editingTaskId ? 'Save Task' : 'Add Task'}
-                      </button>
-                  </div>
-                  <ul className="list-group">
-                      {renderTasks(tasks.filter(t => t.bossId === currentBossId))}
-                  </ul>
-              </div>
+          {/* Add Task Form */}
+          <div className="card mb-4">
+            <div className="card-body">
+              <h5 className="card-title">Add New Task</h5>
+              <Form>
+                <Form.Group className="mb-3">
+                  <Form.Label htmlFor="taskInput">Task Title:</Form.Label>
+                  <Form.Control
+                    type="text"
+                    id="taskInput"
+                    value={task}
+                    onChange={(e) => setTask(e.target.value)}
+                    placeholder="Enter task title"
+                  />
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label htmlFor="recurrenceInput">Recurrence Days (0 for no recurrence):</Form.Label>
+                  <Form.Control
+                    type="number"
+                    id="recurrenceInput"
+                    value={recurrenceDays}
+                    onChange={(e) => setRecurrenceDays(e.target.value)}
+                    min="0"
+                  />
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label htmlFor="difficultySelect">Difficulty:</Form.Label>
+                  <Form.Select
+                    id="difficultySelect"
+                    value={selectedDifficulty}
+                    onChange={(e) => setSelectedDifficulty(e.target.value)}
+                  >
+                    {Object.keys(DIFFICULTY_DAMAGE_MAP).map(difficulty => (
+                      <option key={difficulty} value={difficulty}>{difficulty}</option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label htmlFor="parentTaskSelect">Parent Task (Optional):</Form.Label>
+                  <Form.Select
+                    id="parentTaskSelect"
+                    value={selectedParentTask}
+                    onChange={(e) => setSelectedParentTask(e.target.value)}
+                  >
+                    <option value="">No Parent Task</option>
+                    {tasks.map(t => (
+                      <option key={t.id} value={t.id}>{t.title}</option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+                <Button variant="primary" onClick={saveTask}>
+                  {editingTaskId ? 'Update Task' : 'Add Task'}
+                </Button>
+              </Form>
+            </div>
           </div>
+
+          
+
+          
         </div>
 
         {/* Right Panel */}
         <div className="col-md-3">
           <div className="card">
             <div className="card-body">
-              <h5 className="card-title">오른쪽 패널</h5>
-              <p className="card-text">여기에 활동 로그나 통계 등을 추가할 수 있습니다.</p>
+              <h5 className="card-title">Player Info</h5>
+              {user && userInfo ? (
+                <>
+                  <p><strong>Email:</strong> {user.email}</p>
+                  <p><strong>Level:</strong> {userInfo.level}</p>
+                  <p><strong>XP:</strong> {userInfo.experience} / 100</p>
+                  <p><strong>HP:</strong> {playerHp} / 100</p> {/* 임시 HP 표시 */}
+                  <button className="btn btn-outline-secondary btn-sm" onClick={handleSignOut}>Logout</button>
+                </>
+              ) : (
+                <p>Please log in to see your player info.</p>
+              )}
             </div>
           </div>
         </div>
@@ -1034,3 +1093,6 @@ function App() {
 }
 
 export default App;
+
+
+
