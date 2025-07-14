@@ -1,6 +1,6 @@
 
 import React from 'react';
-import './Boss.css';
+import '../styles/Boss.css';
 
 // Helper function to get a consistent number from a string/number ID
 const getIndexFromId = (id, arrayLength) => {

@@ -4,11 +4,12 @@ import { Modal, Button, Form } from 'react-bootstrap'; // Import Modal, Button, 
 
 
 
-import './App.css';
+import './styles/App.css';
 import { auth } from './index'; // auth 객체 import
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
-import Boss from './Boss';
+import Boss from './pages/Boss';
+import api from './services/api';
 
 const DIFFICULTY_DAMAGE_MAP = {
   Easy: 10,
@@ -45,11 +46,11 @@ function App() {
   const [editingBossDifficulty, setEditingBossDifficulty] = useState('Medium'); // Difficulty of boss being edited
   const [editingBossDueDate, setEditingBossDueDate] = useState(''); // Due date of boss being edited
   const [editingParentBoss, setEditingParentBoss] = useState(''); // Parent boss of boss being edited
-  const [showBossSelectionModal, setShowBossSelectionModal] = useState(false); // Boss selection modal state
+  
   const [editingTaskId, setEditingTaskId] = useState(null); // Editing task ID state
   const [takingDamage, setTakingDamage] = useState(false); // Taking damage animation state
   const [userInfo, setUserInfo] = useState(null); // User Level and XP
-  const [playerHp, setPlayerHp] = useState(100); // Player HP state (temporary)
+  const [playerHp] = useState(100); // Player HP state (temporary)
   const [collapsedBosses, setCollapsedBosses] = useState({}); // State to manage collapsed bosses
 
   const toggleBossCollapse = (bossId) => {
@@ -90,16 +91,11 @@ function App() {
   useEffect(() => {
     const fetchGameConfig = async () => {
       try {
-        const response = await fetch('http://localhost:8080/api/config/game');
-        if (response.ok) {
-          const config = await response.json();
-          setGameConfig({
-            difficultyDamageMap: config.difficultyDamageMap || {},
-            bossHpMap: config.bossHpMap || {},
-          });
-        } else {
-          console.error("Failed to fetch game config");
-        }
+        const config = await api.get('/config/game');
+        setGameConfig({
+          difficultyDamageMap: config.difficultyDamageMap || {},
+          bossHpMap: config.bossHpMap || {},
+        });
       } catch (error) {
         console.error("Error fetching game config:", error);
       }
@@ -128,41 +124,20 @@ function App() {
       };
 
       try {
-        let response;
+        let savedTask;
         if (editingTaskId) {
           // Update existing task
-          response = await fetch(`http://localhost:8080/api/tasks/${editingTaskId}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${idToken}`,
-            },
-            body: JSON.stringify(taskData),
-          });
+          savedTask = await api.put(`/tasks/${editingTaskId}`, taskData, idToken);
         } else {
           // Add new task
-          response = await fetch('http://localhost:8080/api/tasks', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${idToken}`,
-            },
-            body: JSON.stringify(taskData),
-          });
+          savedTask = await api.post('/tasks', taskData, idToken);
         }
 
-        if (response.ok) {
-          const savedTask = await response.json();
-          if (editingTaskId) {
-            setTasks(tasks.map(t => (t.id === editingTaskId ? savedTask : t)));
-            setEditingTaskId(null);
-          } else {
-            setTasks([...tasks, savedTask]);
-          }
+        if (editingTaskId) {
+          setTasks(tasks.map(t => (t.id === editingTaskId ? savedTask : t)));
+          setEditingTaskId(null);
         } else {
-          const errorText = await response.text();
-          console.error("Error saving task:", errorText);
-          alert(`Failed to save task: ${errorText}`);
+          setTasks([...tasks, savedTask]);
         }
       } catch (error) {
         console.error("Error saving task:", error);
@@ -185,43 +160,21 @@ function App() {
     setTakingDamage(true); // For damage animation
 
     try {
-      const response = await fetch(`http://localhost:8080/api/tasks/${id}/complete`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`,
-        },
-      });
+      const updatedTask = await api.post(`/tasks/${id}/complete`, {}, idToken);
+      setTasks(prevTasks => prevTasks.map(t =>
+        t.id === updatedTask.id
+          ? { ...updatedTask, name: updatedTask.title } // Map title to name for consistency
+          : t
+      ));
 
-      if (response.ok) {
-        const updatedTask = await response.json();
-        setTasks(prevTasks => prevTasks.map(t =>
-          t.id === updatedTask.id
-            ? { ...updatedTask, name: updatedTask.title } // Map title to name for consistency
-            : t
+      // Fetch updated boss data after task completion
+      if (updatedTask.goalId) {
+        const updatedBoss = await api.get(`/goals/${updatedTask.goalId}`, idToken);
+        setBosses(prevBosses => prevBosses.map(boss =>
+          boss.id === updatedBoss.id
+            ? updatedBoss
+            : boss
         ));
-
-        // Fetch updated boss data after task completion
-        if (updatedTask.goalId) {
-          const bossResponse = await fetch(`http://localhost:8080/api/goals/${updatedTask.goalId}`, {
-            headers: {
-              'Authorization': `Bearer ${idToken}`,
-            },
-          });
-          if (bossResponse.ok) {
-            const updatedBoss = await bossResponse.json();
-            setBosses(prevBosses => prevBosses.map(boss =>
-              boss.id === updatedBoss.id
-                ? updatedBoss
-                : boss
-            ));
-          } else {
-            console.error("Failed to fetch updated boss data");
-          }
-        }
-      } else {
-        const errorText = await response.text();
-        alert(`Failed to complete task: ${errorText}`);
       }
     } catch (error) {
       console.error("Error completing task:", error);
@@ -233,23 +186,12 @@ function App() {
 
   const editTask = async (id) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/tasks/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`,
-        },
-      });
-      if (response.ok) {
-        const taskToEdit = await response.json();
-        setTask(taskToEdit.title);
-        setRecurrenceDays(taskToEdit.recurrenceDays);
-        setSelectedDifficulty(taskToEdit.difficulty);
-        setSelectedParentTask(taskToEdit.parentTaskId || '');
-        setEditingTaskId(id);
-      } else {
-        const errorText = await response.text();
-        console.error("Error fetching task for edit:", errorText);
-        alert(`Failed to fetch task for edit: ${errorText}`);
-      }
+      const taskToEdit = await api.get(`/tasks/${id}`, idToken);
+      setTask(taskToEdit.title);
+      setRecurrenceDays(taskToEdit.recurrenceDays);
+      setSelectedDifficulty(taskToEdit.difficulty);
+      setSelectedParentTask(taskToEdit.parentTaskId || '');
+      setEditingTaskId(id);
     } catch (error) {
       console.error("Error fetching task for edit:", error);
       alert(`Failed to fetch task for edit: ${error.message}`);
@@ -262,19 +204,8 @@ function App() {
       return;
     }
     try {
-      const response = await fetch(`http://localhost:8080/api/tasks/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${idToken}`,
-        },
-      });
-      if (response.ok) {
-        setTasks(tasks.filter(t => t.id !== id));
-      } else {
-        const errorText = await response.text();
-        console.error("Error deleting task:", errorText);
-        alert(`Failed to delete task: ${errorText}`);
-      }
+      await api.delete(`/tasks/${id}`, idToken);
+      setTasks(tasks.filter(t => t.id !== id));
     } catch (error) {
       console.error("Error deleting task:", error);
       alert(`Failed to delete task: ${error.message}`);
@@ -288,66 +219,37 @@ function App() {
       try {
         // Load bosses from backend
         console.log("Fetching bosses from /api/goals...");
-        const bossesResponse = await fetch('http://localhost:8080/api/goals', {
-          headers: {
-            'Authorization': `Bearer ${idToken}`,
-          },
-        });
-        console.log("Bosses fetch response status:", bossesResponse.status, "ok:", bossesResponse.ok);
-        if (bossesResponse.ok) {
-          const fetchedBosses = await bossesResponse.json();
-          console.log("Fetched bosses data:", fetchedBosses);
-          console.log("Current boss ID before update:", currentBossId);
-          setBosses(fetchedBosses);
-          // Try to keep the current boss selected
-          const previouslySelectedBoss = fetchedBosses.find(boss => boss.id === currentBossId);
-          if (previouslySelectedBoss && previouslySelectedBoss.currentHp > 0) {
-            setCurrentBossId(previouslySelectedBoss.id);
-          } else if (fetchedBosses.length > 0) {
-            // If previous boss is defeated or not found, find the first active boss
-            const firstActiveBoss = fetchedBosses.find(boss => boss.currentHp > 0);
-            if (firstActiveBoss) {
-              setCurrentBossId(firstActiveBoss.id);
-            } else {
-              // If no active bosses, select the first one (even if defeated)
-              setCurrentBossId(fetchedBosses[0].id);
-            }
+        const fetchedBosses = await api.get('/goals', idToken);
+        console.log("Fetched bosses data:", fetchedBosses);
+        console.log("Current boss ID before update:", currentBossId);
+        setBosses(fetchedBosses);
+        // Try to keep the current boss selected
+        const previouslySelectedBoss = fetchedBosses.find(boss => boss.id === currentBossId);
+        if (previouslySelectedBoss && previouslySelectedBoss.currentHp > 0) {
+          setCurrentBossId(previouslySelectedBoss.id);
+        } else if (fetchedBosses.length > 0) {
+          // If previous boss is defeated or not found, find the first active boss
+          const firstActiveBoss = fetchedBosses.find(boss => boss.currentHp > 0);
+          if (firstActiveBoss) {
+            setCurrentBossId(firstActiveBoss.id);
           } else {
-            setCurrentBossId(null); // No bosses available
+            // If no active bosses, select the first one (even if defeated)
+            setCurrentBossId(fetchedBosses[0].id);
           }
         } else {
-          console.error("Failed to fetch bosses:", bossesResponse.status, await bossesResponse.text());
+          setCurrentBossId(null); // No bosses available
         }
 
         // Load tasks from backend
         console.log("Fetching tasks from /api/tasks...");
-        const tasksResponse = await fetch('http://localhost:8080/api/tasks', {
-          headers: {
-            'Authorization': `Bearer ${idToken}`,
-          },
-        });
-        console.log("Tasks fetch response status:", tasksResponse.status, "ok:", tasksResponse.ok);
-        if (tasksResponse.ok) {
-          const fetchedTasks = await tasksResponse.json();
-          console.log("Fetched tasks data:", fetchedTasks);
-          setTasks(fetchedTasks.map(t => ({ ...t, name: t.title }))); // Map title to name for consistency
-        } else {
-          console.error("Failed to fetch tasks:", tasksResponse.status, await tasksResponse.text());
-        }
+        const fetchedTasks = await api.get('/tasks', idToken);
+        console.log("Fetched tasks data:", fetchedTasks);
+        setTasks(fetchedTasks.map(t => ({ ...t, name: t.title }))); // Map title to name for consistency
 
         // Load user info from backend
         console.log("Fetching user info from /api/user/me...");
-        const userResponse = await fetch('http://localhost:8080/api/user/me', {
-            headers: {
-                'Authorization': `Bearer ${idToken}`,
-            },
-        });
-        if (userResponse.ok) {
-            const fetchedUser = await userResponse.json();
-            setUserInfo(fetchedUser);
-        } else {
-            console.error("Failed to fetch user info:", userResponse.status, await userResponse.text());
-        }
+        const fetchedUser = await api.get('/user/me', idToken);
+        setUserInfo(fetchedUser);
 
       } catch (error) {
         console.error("Error loading data:", error);
@@ -426,46 +328,18 @@ function App() {
 
     try {
       // Fetch and delete all bosses for the current user from backend
-      const bossesResponse = await fetch('http://localhost:8080/api/goals', {
-        headers: {
-          'Authorization': `Bearer ${idToken}`,
-        },
-      });
-      if (bossesResponse.ok) {
-        const fetchedBosses = await bossesResponse.json();
-        const deleteBossPromises = fetchedBosses.map(boss =>
-          fetch(`http://localhost:8080/api/goals/${boss.id}`, {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${idToken}`,
-            },
-          })
-        );
-        await Promise.all(deleteBossPromises);
-      } else {
-        console.error("Failed to fetch bosses for deletion:", await bossesResponse.text());
-      }
+      const fetchedBosses = await api.get('/goals', idToken);
+      const deleteBossPromises = fetchedBosses.map(boss =>
+        api.delete(`/goals/${boss.id}`, idToken)
+      );
+      await Promise.all(deleteBossPromises);
 
       // Fetch and delete all tasks for the current user from backend
-      const tasksResponse = await fetch('http://localhost:8080/api/tasks', {
-        headers: {
-          'Authorization': `Bearer ${idToken}`,
-        },
-      });
-      if (tasksResponse.ok) {
-        const fetchedTasks = await tasksResponse.json();
-        const deleteTaskPromises = fetchedTasks.map(task =>
-          fetch(`http://localhost:8080/api/tasks/${task.id}`, {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${idToken}`,
-            },
-          })
-        );
-        await Promise.all(deleteTaskPromises);
-      } else {
-        console.error("Failed to fetch tasks for deletion:", await tasksResponse.text());
-      }
+      const fetchedTasks = await api.get('/tasks', idToken);
+      const deleteTaskPromises = fetchedTasks.map(task =>
+        api.delete(`/tasks/${task.id}`, idToken)
+      );
+      await Promise.all(deleteTaskPromises);
 
       // Clear local state
       setBosses([]);
@@ -499,23 +373,11 @@ function App() {
       return;
     }
     try {
-      const response = await fetch('http://localhost:8080/api/test', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${idToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (response.ok) {
-        const data = await response.text();
-        alert(`백엔드 응답: ${data}`);
-      } else {
-        const errorText = await response.text();
-        alert(`백엔드 호출 실패: ${response.status} - ${errorText}`);
-      }
+      const data = await api.get('/test', idToken);
+      alert(`백엔드 응답: ${data}`);
     } catch (error) {
       console.error("백엔드 호출 오류:", error);
-      alert("백엔드 호출 중 오류가 발생했습니다.");
+      alert(`백엔드 호출 중 오류가 발생했습니다.: ${error.message}`);
     }
   };
 
@@ -547,30 +409,17 @@ function App() {
     };
 
     try {
-      const response = await fetch('http://localhost:8080/api/goals', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`,
-        },
-        body: JSON.stringify(bossData),
-      });
+      await api.post('/goals', bossData, idToken);
 
-      if (response.ok) {
-        // Reload all data to ensure UI is in sync with backend
-        await loadData(); 
+      // Reload all data to ensure UI is in sync with backend
+      await loadData(); 
 
-        // Reset form and close modal
-        setNewBossName('');
-        setSelectedBossDifficulty('Medium');
-        setSelectedParentBoss('');
-        setNewBossDueDate('');
-        setShowAddBossModal(false);
-      } else {
-        const errorText = await response.text();
-        console.error("Error adding boss:", errorText);
-        alert(`Failed to add boss: ${errorText}`);
-      }
+      // Reset form and close modal
+      setNewBossName('');
+      setSelectedBossDifficulty('Medium');
+      setSelectedParentBoss('');
+      setNewBossDueDate('');
+      setShowAddBossModal(false);
     } catch (e) {
       console.error("Error adding boss:", e);
       alert(`Failed to add boss: ${e.message}`);
@@ -603,23 +452,9 @@ function App() {
     };
 
     try {
-      const response = await fetch(`http://localhost:8080/api/goals/${editingBossId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`,
-        },
-        body: JSON.stringify(bossData),
-      });
-
-      if (response.ok) {
-        await loadData(); // Reload all data to ensure UI is in sync with backend
-        setShowEditBossModal(false);
-      } else {
-        const errorText = await response.text();
-        console.error("Error editing boss:", errorText);
-        alert(`Failed to edit boss: ${errorText}`);
-      }
+      await api.put(`/goals/${editingBossId}`, bossData, idToken);
+      await loadData(); // Reload all data to ensure UI is in sync with backend
+      setShowEditBossModal(false);
     } catch (e) {
       console.error("Error editing boss:", e);
       alert(`Failed to edit boss: ${e.message}`);
@@ -641,22 +476,10 @@ function App() {
     }
 
     try {
-      const response = await fetch(`http://localhost:8080/api/goals/${editingBossId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${idToken}`,
-        },
-      });
-
-      if (response.ok) {
-        await loadData(); // Reload all data to ensure UI is in sync with backend
-        setShowEditBossModal(false);
-        setCurrentBossId(null); // Clear current boss if deleted
-      } else {
-        const errorText = await response.text();
-        console.error("Error deleting boss:", errorText);
-        alert(`Failed to delete boss: ${errorText}`);
-      }
+      await api.delete(`/goals/${editingBossId}`, idToken);
+      await loadData(); // Reload all data to ensure UI is in sync with backend
+      setShowEditBossModal(false);
+      setCurrentBossId(null); // Clear current boss if deleted
     } catch (e) {
       console.error("Error deleting boss:", e);
       alert(`Failed to delete boss: ${e.message}`);
