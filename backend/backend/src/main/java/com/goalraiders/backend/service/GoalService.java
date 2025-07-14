@@ -27,13 +27,13 @@ public class GoalService {
     private GameConfigProperties gameConfigProperties;
 
     public List<GoalDto> getAllGoalsForCurrentUser() {
-        User currentUser = userService.getOrCreateCurrentUser();
+        User currentUser = userService.getCurrentUserEntity();
         List<Goal> goals = goalRepository.findByUserFirebaseUid(currentUser.getFirebaseUid());
         return goals.stream().map(this::convertToDto).collect(Collectors.toList());
     }
 
     public GoalDto getGoalById(Long id) {
-        User currentUser = userService.getOrCreateCurrentUser();
+        User currentUser = userService.getCurrentUserEntity();
         Goal goal = goalRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Goal not found with id " + id));
         if (!goal.getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
@@ -43,7 +43,7 @@ public class GoalService {
     }
 
     public GoalDto createGoal(GoalDto goalDto) {
-        User currentUser = userService.getOrCreateCurrentUser();
+        User currentUser = userService.getCurrentUserEntity();
         Goal goal = new Goal();
         goal.setTitle(goalDto.getTitle());
         goal.setDescription(goalDto.getDescription());
@@ -68,7 +68,7 @@ public class GoalService {
     }
 
     public GoalDto updateGoal(Long id, GoalDto goalDto) {
-        User currentUser = userService.getOrCreateCurrentUser();
+        User currentUser = userService.getCurrentUserEntity();
         Goal goalToUpdate = goalRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Goal not found with id " + id));
 
@@ -98,7 +98,7 @@ public class GoalService {
     }
 
     public void deleteGoal(Long id) {
-        User currentUser = userService.getOrCreateCurrentUser();
+        User currentUser = userService.getCurrentUserEntity();
         Goal goal = goalRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Goal not found with id " + id));
 
@@ -110,7 +110,7 @@ public class GoalService {
     }
 
     public GoalDto applyDamageToGoal(Long goalId, String difficulty) {
-        User currentUser = userService.getOrCreateCurrentUser();
+        User currentUser = userService.getCurrentUserEntity();
         Goal goal = goalRepository.findById(goalId)
                 .orElseThrow(() -> new ResourceNotFoundException("Goal not found with id " + goalId));
 

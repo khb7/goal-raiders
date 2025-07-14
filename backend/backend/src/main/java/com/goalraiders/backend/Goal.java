@@ -32,8 +32,16 @@ public class Goal {
 
     private int maxHp;
     private int currentHp;
+    private boolean defeated = false;
 
     // Getters and Setters
+    public boolean isDefeated() {
+        return defeated;
+    }
+
+    public void setDefeated(boolean defeated) {
+        this.defeated = defeated;
+    }
     public Long getId() {
         return id;
     }

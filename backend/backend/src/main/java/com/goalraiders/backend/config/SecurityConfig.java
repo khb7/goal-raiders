@@ -30,7 +30,7 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // 세션 사용 안 함
             .authorizeHttpRequests(auth -> auth
                 
-                .requestMatchers("/h2-console/**", "/api/test").permitAll() // H2 콘솔 및 /api/test 접근 허용 (개발 환경에서만)
+                .requestMatchers("/h2-console/**", "/api/test", "/api/config/game").permitAll() // H2 콘솔 및 /api/test 접근 허용 (개발 환경에서만)
                 .anyRequest().authenticated() // 그 외 모든 요청은 인증 필요
             );
 

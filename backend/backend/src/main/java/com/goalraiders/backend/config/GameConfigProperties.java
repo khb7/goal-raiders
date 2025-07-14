@@ -12,6 +12,15 @@ public class GameConfigProperties {
 
     private Map<String, Integer> difficultyDamageMap = new HashMap<>();
     private Map<String, Integer> bossHpMap = new HashMap<>();
+    private Map<String, Integer> bossXpRewardMap = new HashMap<>();
+
+    public Map<String, Integer> getBossXpRewardMap() {
+        return bossXpRewardMap;
+    }
+
+    public void setBossXpRewardMap(Map<String, Integer> bossXpRewardMap) {
+        this.bossXpRewardMap = bossXpRewardMap;
+    }
 
     public Map<String, Integer> getDifficultyDamageMap() {
         return difficultyDamageMap;

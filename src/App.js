@@ -297,6 +297,7 @@ function App() {
         if (bossesResponse.ok) {
           const fetchedBosses = await bossesResponse.json();
           console.log("Fetched bosses data:", fetchedBosses);
+          console.log("Current boss ID before update:", currentBossId);
           setBosses(fetchedBosses);
           // Try to keep the current boss selected
           const previouslySelectedBoss = fetchedBosses.find(boss => boss.id === currentBossId);
@@ -361,6 +362,10 @@ function App() {
       loadData();
     }
   }, [userId, idToken, loadData]);
+
+  useEffect(() => {
+    console.log("Current boss ID updated:", currentBossId);
+  }, [currentBossId]);
 
   useEffect(() => {
     if ("Notification" in window) {

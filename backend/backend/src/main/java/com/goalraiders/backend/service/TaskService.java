@@ -29,13 +29,13 @@ public class TaskService {
     private GameConfigProperties gameConfigProperties;
 
     public List<TaskDto> getAllTasksForCurrentUser() {
-        User currentUser = userService.getOrCreateCurrentUser();
+        User currentUser = userService.getCurrentUserEntity();
         List<Task> tasks = taskRepository.findByUserFirebaseUid(currentUser.getFirebaseUid());
         return tasks.stream().map(this::convertToDto).collect(Collectors.toList());
     }
 
     public TaskDto getTaskById(Long id) {
-        User currentUser = userService.getOrCreateCurrentUser();
+        User currentUser = userService.getCurrentUserEntity();
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + id));
         if (!task.getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
@@ -45,7 +45,7 @@ public class TaskService {
     }
 
     public TaskDto createTask(TaskDto taskDto) {
-        User currentUser = userService.getOrCreateCurrentUser();
+        User currentUser = userService.getCurrentUserEntity();
         Task task = new Task();
         task.setTitle(taskDto.getTitle());
         task.setCompleted(taskDto.isCompleted());
@@ -75,7 +75,7 @@ public class TaskService {
     }
 
     public TaskDto updateTask(Long id, TaskDto taskDto) {
-        User currentUser = userService.getOrCreateCurrentUser();
+        User currentUser = userService.getCurrentUserEntity();
         Task taskToUpdate = taskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + id));
 
@@ -114,7 +114,7 @@ public class TaskService {
     }
 
     public void deleteTask(Long id) {
-        User currentUser = userService.getOrCreateCurrentUser();
+        User currentUser = userService.getCurrentUserEntity();
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + id));
 
@@ -126,7 +126,7 @@ public class TaskService {
     }
 
     public TaskDto completeTask(Long taskId) {
-        User currentUser = userService.getOrCreateCurrentUser();
+        User currentUser = userService.getCurrentUserEntity();
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + taskId));
 
@@ -152,6 +152,13 @@ public class TaskService {
                 int damage = gameConfigProperties.getDifficultyDamageMap().getOrDefault(task.getDifficulty(), 0);
                 int newHp = goal.getCurrentHp() - damage;
                 goal.setCurrentHp(Math.max(0, newHp));
+
+                if (goal.getCurrentHp() <= 0 && !goal.isDefeated()) {
+                    goal.setDefeated(true);
+                    int xpReward = gameConfigProperties.getBossXpRewardMap().getOrDefault(goal.getStatus(), 0);
+                    userService.addExperience(currentUser.getFirebaseUid(), xpReward);
+                }
+
                 goalRepository.save(goal);
             }
         }
@@ -174,4 +181,3 @@ public class TaskService {
         return dto;
     }
 }
-

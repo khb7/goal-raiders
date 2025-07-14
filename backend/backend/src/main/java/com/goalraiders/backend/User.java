@@ -20,7 +20,26 @@ public class User {
     @Column(unique = true) // firebaseUid는 고유해야 함
     private String firebaseUid;
 
+    private Integer level = 1;
+    private Integer experience = 0;
+
     // Getters and Setters
+    public Integer getLevel() {
+        return level;
+    }
+
+    public void setLevel(Integer level) {
+        this.level = level;
+    }
+
+    public Integer getExperience() {
+        return experience;
+    }
+
+    public void setExperience(Integer experience) {
+        this.experience = experience;
+    }
+
     public Long getId() {
         return id;
     }
