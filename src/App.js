@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import BossList from './components/BossList';
 import PlayerInfoCard from './components/PlayerInfoCard';
-import { Modal, Button, Form } from 'react-bootstrap';
+import EditBossModal from './components/EditBossModal';
+import AddBossModal from './components/AddBossModal';
 
 
 
@@ -548,135 +549,39 @@ function App() {
               </Form.Group>
           </div>
 
-          {/* Add New Boss Modal */}
-          <Modal show={showAddBossModal} onHide={() => setShowAddBossModal(false)}>
-              <Modal.Header closeButton>
-                  <Modal.Title>Add New Boss</Modal.Title>
-              </Modal.Header>
-              <Modal.Body>
-                  <Form>
-                      <Form.Group className="mb-3">
-                          <Form.Label htmlFor="newBossNameInput">New Boss Name:</Form.Label>
-                          <Form.Control
-                              type="text"
-                              id="newBossNameInput"
-                              value={newBossName}
-                              onChange={(e) => setNewBossName(e.target.value)}
-                              placeholder="Enter new boss name"
-                          />
-                      </Form.Group>
-                      
-                      <Form.Group className="mb-3">
-                          <Form.Label htmlFor="bossDifficultySelect">Boss Difficulty:</Form.Label>
-                          <Form.Select
-                              id="bossDifficultySelect"
-                              value={selectedBossDifficulty}
-                              onChange={(e) => setSelectedBossDifficulty(e.target.value)}
-                          >
-                              {Object.keys(DIFFICULTY_DAMAGE_MAP).map(difficulty => (
-                                  <option key={difficulty} value={difficulty}>{difficulty}</option>
-                              ))}
-                          </Form.Select>
-                      </Form.Group>
-                      <Form.Group className="mb-3">
-                          <Form.Label htmlFor="newBossDueDateInput">Due Date (Optional):</Form.Label>
-                          <Form.Control
-                              type="date"
-                              id="newBossDueDateInput"
-                              value={newBossDueDate}
-                              onChange={(e) => setNewBossDueDate(e.target.value)}
-                          />
-                      </Form.Group>
-                  <Form.Group className="mb-3">
-                          <Form.Label htmlFor="parentBossSelect">Parent Boss:</Form.Label>
-                          <Form.Select
-                              id="parentBossSelect"
-                              value={selectedParentBoss}
-                              onChange={(e) => setSelectedParentBoss(e.target.value)}
-                          >
-                              <option value="">No Parent Boss</option>
-                              {bosses.map(boss => (
-                                  <option key={boss.id} value={boss.id}>{boss.title}</option>
-                              ))}
-                          </Form.Select>
-                      </Form.Group>
-                  </Form>
-              </Modal.Body>
-              <Modal.Footer>
-                  <Button variant="secondary" onClick={() => setShowAddBossModal(false)}>
-                      Cancel
-                  </Button>
-                  <Button variant="primary" onClick={addBoss}>
-                      Add Boss
-                  </Button>
-              </Modal.Footer>
-          </Modal>
+          <AddBossModal
+            showAddBossModal={showAddBossModal}
+            setShowAddBossModal={setShowAddBossModal}
+            newBossName={newBossName}
+            setNewBossName={setNewBossName}
+            selectedBossDifficulty={selectedBossDifficulty}
+            setSelectedBossDifficulty={setSelectedBossDifficulty}
+            newBossDueDate={newBossDueDate}
+            setNewBossDueDate={setNewBossDueDate}
+            selectedParentBoss={selectedParentBoss}
+            setSelectedParentBoss={setSelectedParentBoss}
+            addBoss={addBoss}
+            bosses={bosses}
+            DIFFICULTY_DAMAGE_MAP={DIFFICULTY_DAMAGE_MAP}
+          />
 
-          {/* Edit Current Boss Modal */}
-          <Modal show={showEditBossModal} onHide={() => setShowEditBossModal(false)}>
-              <Modal.Header closeButton>
-                  <Modal.Title>Edit Boss</Modal.Title>
-              </Modal.Header>
-              <Modal.Body>
-                  <Form>
-                      <Form.Group className="mb-3">
-                          <Form.Label htmlFor="editBossNameInput">Boss Name:</Form.Label>
-                          <Form.Control
-                              type="text"
-                              id="editBossNameInput"
-                              value={editingBossName}
-                              onChange={(e) => setEditingBossName(e.target.value)}
-                          />
-                      </Form.Group>
-                      
-                      <Form.Group className="mb-3">
-                          <Form.Label htmlFor="editBossDifficultySelect">Boss Difficulty:</Form.Label>
-                          <Form.Select
-                              id="editBossDifficultySelect"
-                              value={editingBossDifficulty}
-                              onChange={(e) => setSelectedBossDifficulty(e.target.value)}
-                          >
-                              {Object.keys(DIFFICULTY_DAMAGE_MAP).map(difficulty => (
-                                  <option key={difficulty} value={difficulty}>{difficulty}</option>
-                              ))}
-                          </Form.Select>
-                      </Form.Group>
-                      <Form.Group className="mb-3">
-                          <Form.Label htmlFor="editBossDueDateInput">Due Date (Optional):</Form.Label>
-                          <Form.Control
-                              type="date"
-                              id="editBossDueDateInput"
-                              value={editingBossDueDate}
-                              onChange={(e) => setEditingBossDueDate(e.target.value)}
-                          />
-                      </Form.Group>
-                  <Form.Group className="mb-3">
-                          <Form.Label htmlFor="editParentBossSelect">Parent Boss:</Form.Label>
-                          <Form.Select
-                              id="editParentBossSelect"
-                              value={editingParentBoss}
-                              onChange={(e) => setEditingParentBoss(e.target.value)}
-                          >
-                              <option value="">No Parent Boss</option>
-                              {bosses.filter(boss => boss.id !== editingBossId).map(boss => (
-                                  <option key={boss.id} value={boss.id}>{boss.title}</option>
-                              ))}
-                          </Form.Select>
-                      </Form.Group>
-                  </Form>
-              </Modal.Body>
-              <Modal.Footer>
-                  <Button variant="danger" onClick={deleteBoss}>
-                      Delete Boss
-                  </Button>
-                  <Button variant="secondary" onClick={() => setShowEditBossModal(false)}>
-                      Cancel
-                  </Button>
-                  <Button variant="primary" onClick={editBoss}>
-                      Save Changes
-                  </Button>
-              </Modal.Footer>
-          </Modal>
+          <EditBossModal
+            showEditBossModal={showEditBossModal}
+            setShowEditBossModal={setShowEditBossModal}
+            editingBossId={editingBossId}
+            editingBossName={editingBossName}
+            setEditingBossName={setEditingBossName}
+            editingBossDifficulty={editingBossDifficulty}
+            setEditingBossDifficulty={setEditingBossDifficulty}
+            editingBossDueDate={editingBossDueDate}
+            setEditingBossDueDate={setEditingBossDueDate}
+            editingParentBoss={editingParentBoss}
+            setEditingParentBoss={setEditingParentBoss}
+            editBoss={editBoss}
+            deleteBoss={deleteBoss}
+            bosses={bosses}
+            DIFFICULTY_DAMAGE_MAP={DIFFICULTY_DAMAGE_MAP}
+          />
 
           {currentBoss && (
             <BossDisplay 
