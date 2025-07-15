@@ -105,10 +105,10 @@ function App() {
         let savedTask;
         if (editingTaskId) {
           // Update existing task
-          savedTask = await api.put(`/tasks/${editingTaskId}`, taskData, idToken);
+          savedTask = await api.put(`/tasks/${editingTaskId}`, taskData, { idToken });
         } else {
           // Add new task
-          savedTask = await api.post('/tasks', taskData, idToken);
+          savedTask = await api.post('/tasks', taskData, { idToken });
         }
 
         if (editingTaskId) {
@@ -138,7 +138,7 @@ function App() {
     setTakingDamage(true); // For damage animation
 
     try {
-      const updatedTask = await api.post(`/tasks/${id}/complete`, {}, idToken);
+      const updatedTask = await api.post(`/tasks/${id}/complete`, {}, { idToken });
       setTasks(prevTasks => prevTasks.map(t =>
         t.id === updatedTask.id
           ? { ...updatedTask, name: updatedTask.title } // Map title to name for consistency
@@ -147,7 +147,7 @@ function App() {
 
       // Fetch updated boss data after task completion
       if (updatedTask.goalId) {
-        const updatedBoss = await api.get(`/goals/${updatedTask.goalId}`, idToken);
+        const updatedBoss = await api.get(`/goals/${updatedTask.goalId}`, { idToken });
         setBosses(prevBosses => prevBosses.map(boss =>
           boss.id === updatedBoss.id
             ? updatedBoss
@@ -164,7 +164,7 @@ function App() {
 
   const editTask = async (id) => {
     try {
-      const taskToEdit = await api.get(`/tasks/${id}`, idToken);
+      const taskToEdit = await api.get(`/tasks/${id}`, { idToken });
       setTask(taskToEdit.title);
       setRecurrenceDays(taskToEdit.recurrenceDays);
       setSelectedDifficulty(taskToEdit.difficulty);
@@ -182,7 +182,7 @@ function App() {
       return;
     }
     try {
-      await api.delete(`/tasks/${id}`, idToken);
+      await api.delete(`/tasks/${id}`, { idToken });
       setTasks(tasks.filter(t => t.id !== id));
     } catch (error) {
       console.error("Error deleting task:", error);
@@ -197,7 +197,7 @@ function App() {
       try {
         // Load bosses from backend
         console.log("Fetching bosses from /api/goals...");
-        const fetchedBosses = await api.get('/goals', idToken);
+        const fetchedBosses = await api.get('/goals', { idToken });
         console.log("Fetched bosses data:", fetchedBosses);
         console.log("Current boss ID before update:", currentBossId);
         setBosses(fetchedBosses);
@@ -220,7 +220,7 @@ function App() {
 
         // Load tasks from backend
         console.log("Fetching tasks from /api/tasks...");
-        const fetchedTasks = await api.get('/tasks', idToken);
+        const fetchedTasks = await api.get('/tasks', { idToken });
         console.log("Fetched tasks data:", fetchedTasks);
         setTasks(fetchedTasks.map(t => ({ ...t, name: t.title }))); // Map title to name for consistency
 
@@ -304,16 +304,16 @@ function App() {
 
     try {
       // Fetch and delete all bosses for the current user from backend
-      const fetchedBosses = await api.get('/goals', idToken);
+      const fetchedBosses = await api.get('/goals', { idToken });
       const deleteBossPromises = fetchedBosses.map(boss =>
-        api.delete(`/goals/${boss.id}`, idToken)
+        api.delete(`/goals/${boss.id}`, { idToken })
       );
       await Promise.all(deleteBossPromises);
 
       // Fetch and delete all tasks for the current user from backend
-      const fetchedTasks = await api.get('/tasks', idToken);
+      const fetchedTasks = await api.get('/tasks', { idToken });
       const deleteTaskPromises = fetchedTasks.map(task =>
-        api.delete(`/tasks/${task.id}`, idToken)
+        api.delete(`/tasks/${task.id}`, { idToken })
       );
       await Promise.all(deleteTaskPromises);
 
@@ -349,7 +349,7 @@ function App() {
       return;
     }
     try {
-      const data = await api.get('/test', idToken);
+      const data = await api.get('/test', { idToken });
       alert(`백엔드 응답: ${data}`);
     } catch (error) {
       console.error("백엔드 호출 오류:", error);
@@ -385,7 +385,7 @@ function App() {
     };
 
     try {
-      await api.post('/goals', bossData, idToken);
+      await api.post('/goals', bossData, { idToken });
 
       // Reload all data to ensure UI is in sync with backend
       await loadData(); 
@@ -428,7 +428,7 @@ function App() {
     };
 
     try {
-      await api.put(`/goals/${editingBossId}`, bossData, idToken);
+      await api.put(`/goals/${editingBossId}`, bossData, { idToken });
       await loadData(); // Reload all data to ensure UI is in sync with backend
       setShowEditBossModal(false);
     } catch (e) {
@@ -452,7 +452,7 @@ function App() {
     }
 
     try {
-      await api.delete(`/goals/${editingBossId}`, idToken);
+      await api.delete(`/goals/${editingBossId}`, { idToken });
       await loadData(); // Reload all data to ensure UI is in sync with backend
       setShowEditBossModal(false);
       setCurrentBossId(null); // Clear current boss if deleted
