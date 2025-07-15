@@ -1,16 +1,23 @@
 package com.goalraiders.backend.dto;
 
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDate;
 
 public class GoalDto {
     private Long id;
+    @NotBlank(message = "Title cannot be blank")
     private String title;
     private String description;
+    @NotBlank(message = "Status cannot be blank")
     private String status;
+    @NotBlank(message = "User ID cannot be blank")
     private String userId;
     private String parentGoalId;
     private LocalDate dueDate;
+    @Min(value = 1, message = "Max HP must be at least 1")
     private int maxHp;
+    @Min(value = 0, message = "Current HP cannot be negative")
     private int currentHp;
 
     // Getters and Setters

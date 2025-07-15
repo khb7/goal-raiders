@@ -2,6 +2,7 @@ package com.goalraiders.backend;
 
 import com.goalraiders.backend.dto.GoalDto;
 import com.goalraiders.backend.service.GoalService;
+import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -30,13 +31,13 @@ public class GoalController {
 
     @PostMapping
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<GoalDto> createGoal(@RequestBody GoalDto goalDto) {
+    public ResponseEntity<GoalDto> createGoal(@Valid @RequestBody GoalDto goalDto) {
         return ResponseEntity.ok(goalService.createGoal(goalDto));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<GoalDto> updateGoal(@PathVariable Long id, @RequestBody GoalDto goalDto) {
+    public ResponseEntity<GoalDto> updateGoal(@PathVariable Long id, @Valid @RequestBody GoalDto goalDto) {
         return ResponseEntity.ok(goalService.updateGoal(id, goalDto));
     }
 

@@ -1,5 +1,6 @@
 package com.goalraiders.backend;
 
+import jakarta.validation.Valid;
 import com.goalraiders.backend.dto.TaskDto;
 import com.goalraiders.backend.service.TaskService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,12 +27,12 @@ public class TaskController {
     }
 
     @PostMapping
-    public ResponseEntity<TaskDto> createTask(@RequestBody TaskDto taskDto) {
+    public ResponseEntity<TaskDto> createTask(@Valid @RequestBody TaskDto taskDto) {
         return ResponseEntity.ok(taskService.createTask(taskDto));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<TaskDto> updateTask(@PathVariable Long id, @RequestBody TaskDto taskDto) {
+    public ResponseEntity<TaskDto> updateTask(@PathVariable Long id, @Valid @RequestBody TaskDto taskDto) {
         return ResponseEntity.ok(taskService.updateTask(id, taskDto));
     }
 
