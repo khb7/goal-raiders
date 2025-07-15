@@ -5,8 +5,8 @@ import { Modal, Button, Form } from 'react-bootstrap'; // Import Modal, Button, 
 
 
 import './styles/App.css';
-import { auth } from './index'; // auth 객체 import
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
+import { useUser } from './contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
 import Boss from './pages/Boss';
 import api from './services/api';
@@ -33,7 +33,6 @@ function App() {
   const [selectedDifficulty, setSelectedDifficulty] = useState('Medium'); // Default difficulty
   const [selectedParentTask, setSelectedParentTask] = useState(''); // For sub-tasks
   const [selectedParentBoss, setSelectedParentBoss] = useState(''); // For sub-bosses
-  const [userId, setUserId] = useState(null); // User ID state
   const [bosses, setBosses] = useState([]); // Bosses state
   const [currentBossId, setCurrentBossId] = useState(null); // Current boss ID state
   const [newBossName, setNewBossName] = useState(''); // New boss name state
@@ -49,7 +48,6 @@ function App() {
   
   const [editingTaskId, setEditingTaskId] = useState(null); // Editing task ID state
   const [takingDamage, setTakingDamage] = useState(false); // Taking damage animation state
-  const [userInfo, setUserInfo] = useState(null); // User Level and XP
   const [playerHp] = useState(100); // Player HP state (temporary)
   const [collapsedBosses, setCollapsedBosses] = useState({}); // State to manage collapsed bosses
 
@@ -60,28 +58,8 @@ function App() {
     }));
   };
 
-  const [user, setUser] = useState(null); // User state for login status
-  const [idToken, setIdToken] = useState(null); // Firebase ID Token
   const navigate = useNavigate();
-
-  // Listen for authentication state changes
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        setUserId(currentUser.uid); // Set userId when user is logged in
-        const token = await currentUser.getIdToken();
-        setIdToken(token); // Store the ID token
-        console.log("Firebase User:", currentUser);
-        console.log("Fetched ID Token:", token);
-      } else {
-        setUserId(''); // Clear userId when user is logged out
-        setIdToken(null); // Clear ID token
-        console.log("User logged out.");
-      }
-    });
-    return () => unsubscribe(); // Cleanup subscription on unmount
-  }, []);
+  const { user, userId, idToken, userInfo, fetchUserInfo } = useUser();
 
   const [gameConfig, setGameConfig] = useState({
     difficultyDamageMap: {},
@@ -247,9 +225,7 @@ function App() {
         setTasks(fetchedTasks.map(t => ({ ...t, name: t.title }))); // Map title to name for consistency
 
         // Load user info from backend
-        console.log("Fetching user info from /api/user/me...");
-        const fetchedUser = await api.get('/user/me', idToken);
-        setUserInfo(fetchedUser);
+        // fetchUserInfo is now handled by UserContext
 
       } catch (error) {
         console.error("Error loading data:", error);
@@ -263,7 +239,7 @@ function App() {
     if (userId && idToken) {
       loadData();
     }
-  }, [userId, idToken, loadData]);
+  }, [userId, idToken]);
 
   useEffect(() => {
     console.log("Current boss ID updated:", currentBossId);

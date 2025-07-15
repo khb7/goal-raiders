@@ -5,7 +5,8 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { getAuth } from "firebase/auth";
+import { UserProvider, useUser } from './contexts/UserContext';
 import { getFunctions } from "firebase/functions";
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AuthPage from './pages/AuthPage';
@@ -27,39 +28,39 @@ export const functions = getFunctions(app);
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
 function PrivateRoute({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = React.useState(false);
+  const { user, userId, idToken } = useUser();
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setIsAuthenticated(!!user);
+    if (user !== null) {
       setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+    }
+  }, [user]);
 
   if (loading) {
     return <div>Loading...</div>; // Or a spinner
   }
 
-  return isAuthenticated ? children : <Navigate to="/auth" />;
+  return user ? children : <Navigate to="/auth" />;
 }
 
 root.render(
   <React.StrictMode>
-    <BrowserRouter>
-      <Routes>
-        <Route path="/auth" element={<AuthPage />} />
-        <Route
-          path="/*"
-          element={
-            <PrivateRoute>
-              <App />
-            </PrivateRoute>
-          }
-        />
-      </Routes>
-    </BrowserRouter>
+    <UserProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/auth" element={<AuthPage />} />
+          <Route
+            path="/*"
+            element={
+              <PrivateRoute>
+                <App />
+              </PrivateRoute>
+            }
+          />
+        </Routes>
+      </BrowserRouter>
+    </UserProvider>
   </React.StrictMode>
 );
 
