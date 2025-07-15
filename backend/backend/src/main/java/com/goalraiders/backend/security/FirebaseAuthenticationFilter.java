@@ -8,6 +8,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -16,6 +18,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
@@ -40,10 +44,11 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
                 String uid = decodedToken.getUid();
 
                 // Spring Security UserDetails 객체 생성
+                List<GrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
                 UserDetails userDetails = User.builder()
                         .username(uid)
                         .password("") // Firebase 인증이므로 비밀번호는 필요 없음
-                        .authorities(Collections.emptyList()) // 권한은 필요에 따라 추가
+                        .authorities(authorities) // 권한은 필요에 따라 추가
                         .build();
 
                 // Spring Security 컨텍스트에 인증 정보 설정
