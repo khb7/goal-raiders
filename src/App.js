@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { Modal, Button, Form } from 'react-bootstrap'; // Import Modal, Button, Form
+import BossList from './components/BossList';
+import PlayerInfoCard from './components/PlayerInfoCard';
+import { Modal, Button, Form } from 'react-bootstrap';
 
 
 
@@ -8,22 +10,10 @@ import './styles/App.css';
 import { signOut } from 'firebase/auth';
 import { useUser } from './contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
-import Boss from './pages/Boss';
+import BossDisplay from './components/BossDisplay';
 import api from './services/api';
 
-const DIFFICULTY_DAMAGE_MAP = {
-  Easy: 10,
-  Medium: 20,
-  Hard: 30,
-  "Very Hard": 50,
-};
-
-const BOSS_DIFFICULTY_COLOR_MAP = {
-  Easy: '#2E7D32',
-  Medium: '#673AB7',
-  Hard: '#C62828',
-  "Very Hard": '#212121',
-};
+import TaskList from './components/TaskList';
 
 function App() {
   
@@ -477,110 +467,11 @@ function App() {
       )
   }
 
-  const renderTasks = (taskList, parentId = null, indent = 0) => {
-    return taskList
-      .filter(task => task.parentId === parentId)
-      .map(task => (
-        <React.Fragment key={task.id}>
-          <li
-            className={`list-group-item d-flex justify-content-between align-items-center ${
-              task.completed ? 'list-group-item-secondary text-decoration-line-through' : ''
-            } ${task.isDue ? 'list-group-item-info' : ''}`}
-            style={{ paddingLeft: `${20 + indent * 20}px` }}
-          >
-            {task.title} ({task.difficulty} - {DIFFICULTY_DAMAGE_MAP[task.difficulty]} HP)
-            <div>
-              <button
-                className={`btn ${task.completed ? 'btn-warning' : 'btn-success'}`}
-                onClick={() => toggleTask(task.id)}
-                disabled={task.completed}
-              >
-                {task.completed ? 'Completed' : 'Complete Task'}
-              </button>
-              <button
-                className="btn btn-info ms-2"
-                onClick={() => editTask(task.id)}
-              >
-                Edit
-              </button>
-              <button
-                className="btn btn-danger ms-2"
-                onClick={() => deleteTask(task.id)}
-              >
-                Delete
-              </button>
-            </div>
-          </li>
-          {renderTasks(taskList, task.id, indent + 1)}
-        </React.Fragment>
-      ));
-  };
+  
 
   
 
-  const renderBosses = (bossList, allTasks, parentId = null, indent = 0) => {
-    const unassignedTasks = allTasks.filter(task => task.goalId === null || task.goalId === undefined);
-
-    return (
-      <>
-        {parentId === null && unassignedTasks.length > 0 && (
-          <React.Fragment key="unassigned-boss">
-            <li
-              className={`list-group-item d-flex justify-content-between align-items-center`}
-              style={{ paddingLeft: `${20 + indent * 20}px`, backgroundColor: '#f0f0f0' }}
-            >
-              Unassigned Tasks
-            </li>
-            <ul className="list-group list-group-flush">
-              {renderTasks(unassignedTasks, null, indent + 1)}
-            </ul>
-          </React.Fragment>
-        )}
-        {bossList
-          .filter(boss => boss.parentGoalId === parentId)
-          .map(boss => {
-            const bossTasks = allTasks.filter(task => task.goalId === boss.id);
-            const isCollapsed = collapsedBosses[boss.id];
-            return (
-              <React.Fragment key={boss.id}>
-                <li
-                  className={`list-group-item d-flex justify-content-between align-items-center ${boss.id === currentBossId ? 'active' : ''}`}
-                  style={{
-                    paddingLeft: `${20 + indent * 20}px`,
-                    backgroundColor: BOSS_DIFFICULTY_COLOR_MAP[boss.status] || 'transparent',
-                  }}
-                >
-                  <span onClick={() => setCurrentBossId(boss.id)} style={{ cursor: 'pointer' }}>
-                    {boss.title} ({boss.currentHp} / {boss.maxHp} HP)
-                  </span>
-                  <div>
-                    <button
-                      className="btn btn-sm btn-outline-secondary ms-2"
-                      onClick={() => toggleBossCollapse(boss.id)}
-                    >
-                      {isCollapsed ? 'Expand' : 'Collapse'}
-                    </button>
-                    {/* Add boss specific actions here if needed */}
-                  </div>
-                </li>
-                {!isCollapsed && (
-                  <ul className="list-group list-group-flush">
-                    {bossTasks.length > 0 ? (
-                      renderTasks(bossTasks, null, indent + 1)
-                    ) : (
-                      <li className="list-group-item text-muted" style={{ paddingLeft: `${20 + (indent + 1) * 20}px` }}>
-                        No tasks for this boss.
-                      </li>
-                    )}
-                    {renderBosses(bossList, allTasks, boss.id, indent + 1)}
-                  </ul>
-                )}
-              </React.Fragment>
-            );
-          })}
-      </>
-    );
-  };
+  
 
   return (
     <div className="container-fluid mt-3 app-main-background d-flex flex-column min-vh-100">
@@ -788,108 +679,51 @@ function App() {
           </Modal>
 
           {currentBoss && (
-            <div 
-              className="boss-display-area p-3 rounded-3 mb-4"
-              style={{ position: 'relative', backgroundColor: BOSS_DIFFICULTY_COLOR_MAP[currentBoss.status] || 'transparent' }}
-            >
-              <Boss bossId={currentBoss.id} bossName={currentBoss.title} currentHp={currentBoss.currentHp} maxHp={currentBoss.maxHp} takingDamage={takingDamage} dueDate={currentBoss.dueDate} />
-              <button
-                className="boss-edit-button"
-                onClick={() => {
-                  setEditingBossId(currentBoss.id);
-                  setEditingBossName(currentBoss.title);
-                  setEditingBossDifficulty(currentBoss.status);
-                  setEditingBossDueDate(currentBoss.dueDate || '');
-                  setEditingParentBoss(currentBoss.parentGoalId || '');
-                  setShowEditBossModal(true);
-                }}
-                style={{ position: 'absolute', top: '10px', right: '10px' }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="feather feather-settings"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0-.33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1.51-1V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-              </button>
-            </div>
+            <BossDisplay 
+              currentBoss={currentBoss} 
+              takingDamage={takingDamage} 
+              onEditBossClick={() => {
+                setEditingBossId(currentBoss.id);
+                setEditingBossName(currentBoss.title);
+                setEditingBossDifficulty(currentBoss.status);
+                setEditingBossDueDate(currentBoss.dueDate || '');
+                setEditingParentBoss(currentBoss.parentGoalId || '');
+                setShowEditBossModal(true);
+              }}
+            />
           )}
 
           {/* Add Task Form */}
-          <div className="card mb-4">
-            <div className="card-body">
-              <h5 className="card-title">Add New Task</h5>
-              <Form>
-                <Form.Group className="mb-3">
-                  <Form.Label htmlFor="taskInput">Task Title:</Form.Label>
-                  <Form.Control
-                    type="text"
-                    id="taskInput"
-                    value={task}
-                    onChange={(e) => setTask(e.target.value)}
-                    placeholder="Enter task title"
-                  />
-                </Form.Group>
-                <Form.Group className="mb-3">
-                  <Form.Label htmlFor="recurrenceInput">Recurrence Days (0 for no recurrence):</Form.Label>
-                  <Form.Control
-                    type="number"
-                    id="recurrenceInput"
-                    value={recurrenceDays}
-                    onChange={(e) => setRecurrenceDays(e.target.value)}
-                    min="0"
-                  />
-                </Form.Group>
-                <Form.Group className="mb-3">
-                  <Form.Label htmlFor="difficultySelect">Difficulty:</Form.Label>
-                  <Form.Select
-                    id="difficultySelect"
-                    value={selectedDifficulty}
-                    onChange={(e) => setSelectedDifficulty(e.target.value)}
-                  >
-                    {Object.keys(DIFFICULTY_DAMAGE_MAP).map(difficulty => (
-                      <option key={difficulty} value={difficulty}>{difficulty}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-                <Form.Group className="mb-3">
-                  <Form.Label htmlFor="parentTaskSelect">Parent Task (Optional):</Form.Label>
-                  <Form.Select
-                    id="parentTaskSelect"
-                    value={selectedParentTask}
-                    onChange={(e) => setSelectedParentTask(e.target.value)}
-                  >
-                    <option value="">No Parent Task</option>
-                    {tasks.map(t => (
-                      <option key={t.id} value={t.id}>{t.title}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-                <Button variant="primary" onClick={saveTask}>
-                  {editingTaskId ? 'Update Task' : 'Add Task'}
-                </Button>
-              </Form>
-            </div>
-          </div>
+          <AddTaskForm
+            task={task}
+            setTask={setTask}
+            recurrenceDays={recurrenceDays}
+            setRecurrenceDays={setRecurrenceDays}
+            selectedDifficulty={selectedDifficulty}
+            setSelectedDifficulty={setSelectedDifficulty}
+            selectedParentTask={selectedParentTask}
+            setSelectedParentTask={setSelectedParentTask}
+            saveTask={saveTask}
+            editingTaskId={editingTaskId}
+            tasks={tasks}
+            DIFFICULTY_DAMAGE_MAP={DIFFICULTY_DAMAGE_MAP}
+          />
 
-          
-
-          
-        </div>
+          <BossList
+            bossList={bosses}
+            allTasks={tasks}
+            currentBossId={currentBossId}
+            setCurrentBossId={setCurrentBossId}
+            collapsedBosses={collapsedBosses}
+            toggleBossCollapse={toggleBossCollapse}
+            toggleTask={toggleTask}
+            editTask={editTask}
+            deleteTask={deleteTask}
+          />
 
         {/* Right Panel */}
         <div className="col-md-3">
-          <div className="card">
-            <div className="card-body">
-              <h5 className="card-title">Player Info</h5>
-              {user && userInfo ? (
-                <>
-                  <p><strong>Email:</strong> {user.email}</p>
-                  <p><strong>Level:</strong> {userInfo.level}</p>
-                  <p><strong>XP:</strong> {userInfo.experience} / 100</p>
-                  <p><strong>HP:</strong> {playerHp} / 100</p> {/* 임시 HP 표시 */}
-                  <button className="btn btn-outline-secondary btn-sm" onClick={handleSignOut}>Logout</button>
-                </>
-              ) : (
-                <p>Please log in to see your player info.</p>
-              )}
-            </div>
-          </div>
+          <PlayerInfoCard playerHp={playerHp} handleSignOut={handleSignOut} />
         </div>
       </div>
     </div>
