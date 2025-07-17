@@ -3,6 +3,7 @@ package com.goalraiders.backend.service;
 import com.goalraiders.backend.*;
 import com.goalraiders.backend.config.GameConfigProperties;
 import com.goalraiders.backend.dto.TaskDto;
+import com.goalraiders.backend.dto.mapper.TaskMapper;
 import com.goalraiders.backend.exception.InvalidInputException;
 import com.goalraiders.backend.exception.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,10 +29,13 @@ public class TaskService {
     @Autowired
     private GameConfigProperties gameConfigProperties;
 
+    @Autowired
+    private TaskMapper taskMapper;
+
     public List<TaskDto> getAllTasksForCurrentUser() {
         User currentUser = userService.getCurrentUserEntity();
         List<Task> tasks = taskRepository.findByUserFirebaseUid(currentUser.getFirebaseUid());
-        return tasks.stream().map(this::convertToDto).collect(Collectors.toList());
+        return tasks.stream().map(taskMapper::toDto).collect(Collectors.toList());
     }
 
     public TaskDto getTaskById(Long id) {
@@ -39,19 +43,14 @@ public class TaskService {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + id));
         if (!task.getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
-            throw new ResourceNotFoundException("Task not found with id " + id); // Or AccessDeniedException
+            throw new ResourceNotFoundException("Task not found with id " + id);
         }
-        return convertToDto(task);
+        return taskMapper.toDto(task);
     }
 
     public TaskDto createTask(TaskDto taskDto) {
         User currentUser = userService.getCurrentUserEntity();
-        Task task = new Task();
-        task.setTitle(taskDto.getTitle());
-        task.setCompleted(taskDto.isCompleted());
-        task.setRecurrenceDays(taskDto.getRecurrenceDays());
-        task.setLastCompleted(taskDto.getLastCompleted());
-        task.setDifficulty(taskDto.getDifficulty());
+        Task task = taskMapper.toEntity(taskDto);
         task.setUser(currentUser);
 
         if (taskDto.getGoalId() != null) {
@@ -71,7 +70,7 @@ public class TaskService {
         }
 
         Task savedTask = taskRepository.save(task);
-        return convertToDto(savedTask);
+        return taskMapper.toDto(savedTask);
     }
 
     public TaskDto updateTask(Long id, TaskDto taskDto) {
@@ -80,14 +79,10 @@ public class TaskService {
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + id));
 
         if (!taskToUpdate.getUser().getId().equals(currentUser.getId())) {
-            throw new ResourceNotFoundException("Task not found with id " + id); // Or AccessDeniedException
+            throw new ResourceNotFoundException("Task not found with id " + id);
         }
 
-        taskToUpdate.setTitle(taskDto.getTitle());
-        taskToUpdate.setCompleted(taskDto.isCompleted());
-        taskToUpdate.setRecurrenceDays(taskDto.getRecurrenceDays());
-        taskToUpdate.setLastCompleted(taskDto.getLastCompleted());
-        taskToUpdate.setDifficulty(taskDto.getDifficulty());
+        taskMapper.toEntity(taskDto, taskToUpdate); // Update existing entity
 
         if (taskDto.getGoalId() != null) {
             Optional<Goal> goal = goalRepository.findById(Long.parseLong(taskDto.getGoalId()));
@@ -110,7 +105,7 @@ public class TaskService {
         }
 
         Task updatedTask = taskRepository.save(taskToUpdate);
-        return convertToDto(updatedTask);
+        return taskMapper.toDto(updatedTask);
     }
 
     public void deleteTask(Long id) {
@@ -119,7 +114,7 @@ public class TaskService {
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + id));
 
         if (!task.getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
-            throw new ResourceNotFoundException("Task not found with id " + id); // Or AccessDeniedException
+            throw new ResourceNotFoundException("Task not found with id " + id);
         }
 
         taskRepository.delete(task);
@@ -131,7 +126,7 @@ public class TaskService {
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + taskId));
 
         if (!task.getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
-            throw new ResourceNotFoundException("Task not found with id " + taskId); // Or AccessDeniedException
+            throw new ResourceNotFoundException("Task not found with id " + taskId);
         }
 
         if (task.isCompleted()) {
@@ -164,20 +159,6 @@ public class TaskService {
         }
 
         Task updatedTask = taskRepository.save(task);
-        return convertToDto(updatedTask);
-    }
-
-    private TaskDto convertToDto(Task task) {
-        TaskDto dto = new TaskDto();
-        dto.setId(task.getId());
-        dto.setTitle(task.getTitle());
-        dto.setCompleted(task.isCompleted());
-        dto.setGoalId(task.getGoal() != null ? String.valueOf(task.getGoal().getId()) : null);
-        dto.setRecurrenceDays(task.getRecurrenceDays());
-        dto.setLastCompleted(task.getLastCompleted());
-        dto.setDifficulty(task.getDifficulty());
-        dto.setParentTaskId(task.getParentTask() != null ? String.valueOf(task.getParentTask().getId()) : null);
-        dto.setUserId(task.getUser() != null ? task.getUser().getFirebaseUid() : null);
-        return dto;
+        return taskMapper.toDto(updatedTask);
     }
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import Boss from '../pages/Boss';
+import Boss from '../Boss';
 
 const BOSS_DIFFICULTY_COLOR_MAP = {
   Easy: '#2E7D32',

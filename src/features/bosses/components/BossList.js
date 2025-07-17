@@ -1,20 +1,16 @@
 import React from 'react';
-import TaskList from './TaskList';
-import { BOSS_DIFFICULTY_COLOR_MAP } from '../utils/constants';
+import TaskList from '../../tasks/components/TaskList';
+import { useGameConfig } from '../../game/GameConfigContext';
 
-const BossList = ({
-  bossList,
-  allTasks,
-  parentId = null,
-  indent = 0,
-  currentBossId,
-  setCurrentBossId,
-  collapsedBosses,
-  toggleBossCollapse,
-  toggleTask,
-  editTask,
-  deleteTask,
-}) => {
+const BossList = ({ bossList, allTasks, parentId = null, indent = 0, currentBossId, setCurrentBossId, collapsedBosses, toggleBossCollapse, toggleTask, editTask, deleteTask }) => {
+  const { gameConfig } = useGameConfig();
+  const BOSS_DIFFICULTY_COLOR_MAP = gameConfig.bossHpMap ? {
+    Easy: '#2E7D32',
+    Medium: '#673AB7',
+    Hard: '#C62828',
+    "Very Hard": '#212121',
+  } : {};
+
   const unassignedTasks = allTasks.filter(task => task.goalId === null || task.goalId === undefined);
 
   return (
@@ -56,7 +52,6 @@ const BossList = ({
                   >
                     {isCollapsed ? 'Expand' : 'Collapse'}
                   </button>
-                  {/* Add boss specific actions here if needed */}
                 </div>
               </li>
               {!isCollapsed && (

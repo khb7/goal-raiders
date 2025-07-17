@@ -1,48 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal, Button, Form } from 'react-bootstrap';
 
-const AddBossModal = ({ show, handleClose, handleAddBoss, bosses, gameConfig, userId }) => {
+const EditBossModal = ({ show, handleClose, handleEditBoss, handleDeleteBoss, boss, allBosses, gameConfig, userId }) => {
   const [title, setTitle] = useState('');
   const [difficulty, setDifficulty] = useState('Medium');
   const [dueDate, setDueDate] = useState('');
   const [parentGoalId, setParentGoalId] = useState('');
 
+  useEffect(() => {
+    if (boss) {
+      setTitle(boss.title || '');
+      setDifficulty(boss.status || 'Medium');
+      setDueDate(boss.dueDate || '');
+      setParentGoalId(boss.parentGoalId || '');
+    }
+  }, [boss]);
+
   const handleSubmit = () => {
-    const maxHp = gameConfig.bossHpMap[difficulty] || 100;
     const bossData = {
       title,
-      maxHp,
-      currentHp: maxHp,
       userId,
       parentGoalId: parentGoalId || null,
       dueDate: dueDate || null,
       status: difficulty,
     };
-    handleAddBoss(bossData);
-    // Reset form
-    setTitle('');
-    setDifficulty('Medium');
-    setDueDate('');
-    setParentGoalId('');
+    handleEditBoss(bossData);
   };
 
   return (
     <Modal show={show} onHide={handleClose}>
       <Modal.Header closeButton>
-        <Modal.Title>Add New Boss</Modal.Title>
+        <Modal.Title>Edit Boss</Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <Form>
           <Form.Group className="mb-3">
-            <Form.Label>New Boss Name:</Form.Label>
+            <Form.Label>Boss Name:</Form.Label>
             <Form.Control
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter new boss name"
             />
           </Form.Group>
-          
           <Form.Group className="mb-3">
             <Form.Label>Boss Difficulty:</Form.Label>
             <Form.Select
@@ -69,23 +68,26 @@ const AddBossModal = ({ show, handleClose, handleAddBoss, bosses, gameConfig, us
               onChange={(e) => setParentGoalId(e.target.value)}
             >
               <option value="">No Parent Boss</option>
-              {bosses.map(boss => (
-                <option key={boss.id} value={boss.id}>{boss.title}</option>
+              {allBosses.filter(b => b.id !== boss.id).map(b => (
+                <option key={b.id} value={b.id}>{b.title}</option>
               ))}
             </Form.Select>
           </Form.Group>
         </Form>
       </Modal.Body>
       <Modal.Footer>
+        <Button variant="danger" onClick={handleDeleteBoss}>
+          Delete Boss
+        </Button>
         <Button variant="secondary" onClick={handleClose}>
           Cancel
         </Button>
         <Button variant="primary" onClick={handleSubmit}>
-          Add Boss
+          Save Changes
         </Button>
       </Modal.Footer>
     </Modal>
   );
 };
 
-export default AddBossModal;
+export default EditBossModal;

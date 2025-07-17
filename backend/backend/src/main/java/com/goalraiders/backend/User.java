@@ -1,8 +1,14 @@
 package com.goalraiders.backend;
 
 import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Table;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -21,6 +27,8 @@ public class User {
 
     private Integer level = 1;
     private Integer experience = 0;
+    private Integer currentHp = 100; // Default HP
+    private Integer maxHp = 100; // Default Max HP
 
     @ElementCollection
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
@@ -42,6 +50,22 @@ public class User {
 
     public void setExperience(Integer experience) {
         this.experience = experience;
+    }
+
+    public Integer getCurrentHp() {
+        return currentHp;
+    }
+
+    public void setCurrentHp(Integer currentHp) {
+        this.currentHp = currentHp;
+    }
+
+    public Integer getMaxHp() {
+        return maxHp;
+    }
+
+    public void setMaxHp(Integer maxHp) {
+        this.maxHp = maxHp;
     }
 
     public Long getId() {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useGameConfig } from '../contexts/GameConfigContext';
+import { useGameConfig } from '../../game/GameConfigContext';
 
 const TaskList = ({ tasks, toggleTask, editTask, deleteTask }) => {
   const { gameConfig } = useGameConfig();

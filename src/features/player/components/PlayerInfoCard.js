@@ -1,5 +1,5 @@
 import React from 'react';
-import { useUser } from '../contexts/UserContext';
+import { useUser } from '../UserContext';
 
 const PlayerInfoCard = () => {
   const { user, userInfo, signOutUser } = useUser();

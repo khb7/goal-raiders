@@ -19,7 +19,6 @@ const AddBossModal = ({ show, handleClose, handleAddBoss, bosses, gameConfig, us
       status: difficulty,
     };
     handleAddBoss(bossData);
-    // Reset form
     setTitle('');
     setDifficulty('Medium');
     setDueDate('');
@@ -42,7 +41,6 @@ const AddBossModal = ({ show, handleClose, handleAddBoss, bosses, gameConfig, us
               placeholder="Enter new boss name"
             />
           </Form.Group>
-          
           <Form.Group className="mb-3">
             <Form.Label>Boss Difficulty:</Form.Label>
             <Form.Select

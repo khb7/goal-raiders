@@ -6,13 +6,17 @@ public class UserDto {
     private String email;
     private Integer level;
     private Integer experience;
+    private Integer currentHp;
+    private Integer maxHp;
 
-    public UserDto(Long id, String username, String email, Integer level, Integer experience) {
+    public UserDto(Long id, String username, String email, Integer level, Integer experience, Integer currentHp, Integer maxHp) {
         this.id = id;
         this.username = username;
         this.email = email;
         this.level = level;
         this.experience = experience;
+        this.currentHp = currentHp;
+        this.maxHp = maxHp;
     }
 
     // Getters and Setters
@@ -54,5 +58,21 @@ public class UserDto {
 
     public void setExperience(Integer experience) {
         this.experience = experience;
+    }
+
+    public Integer getCurrentHp() {
+        return currentHp;
+    }
+
+    public void setCurrentHp(Integer currentHp) {
+        this.currentHp = currentHp;
+    }
+
+    public Integer getMaxHp() {
+        return maxHp;
+    }
+
+    public void setMaxHp(Integer maxHp) {
+        this.maxHp = maxHp;
     }
 }

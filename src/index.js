@@ -27,13 +27,29 @@ export const functions = getFunctions(app);
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
+import { GameConfigProvider } from './contexts/GameConfigContext';
+import { BossProvider } from './contexts/BossContext';
+import { TaskProvider } from './features/tasks/TaskContext';
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient();
+
 root.render(
   <React.StrictMode>
-    <UserProvider>
+    <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <AppRoutes />
+        <UserProvider>
+          <GameConfigProvider>
+            <BossProvider>
+              <TaskProvider>
+                <AppRoutes />
+              </TaskProvider>
+            </BossProvider>
+          </GameConfigProvider>
+        </UserProvider>
       </BrowserRouter>
-    </UserProvider>
+    </QueryClientProvider>
   </React.StrictMode>
 );
 

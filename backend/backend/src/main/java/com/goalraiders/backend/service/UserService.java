@@ -3,6 +3,7 @@ package com.goalraiders.backend.service;
 import com.goalraiders.backend.User;
 import com.goalraiders.backend.UserRepository;
 import com.goalraiders.backend.dto.UserDto;
+import com.goalraiders.backend.dto.mapper.UserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -16,6 +17,9 @@ public class UserService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private UserMapper userMapper;
+
     public UserDto getOrCreateCurrentUser() {
         String firebaseUid = ((UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getUsername();
         Optional<User> existingUser = userRepository.findByFirebaseUid(firebaseUid);
@@ -24,11 +28,11 @@ public class UserService {
             User newUser = new User();
             newUser.setFirebaseUid(firebaseUid);
             newUser.setUsername("User_" + firebaseUid.substring(0, 8));
-            newUser.setEmail(firebaseUid + "@example.com"); // Consider a more robust way to handle email
+            newUser.setEmail(firebaseUid + "@example.com");
             return userRepository.save(newUser);
         });
 
-        return new UserDto(user.getId(), user.getUsername(), user.getEmail(), user.getLevel(), user.getExperience());
+        return userMapper.toDto(user);
     }
 
     public User getCurrentUserEntity() {
@@ -37,7 +41,7 @@ public class UserService {
             User newUser = new User();
             newUser.setFirebaseUid(firebaseUid);
             newUser.setUsername("User_" + firebaseUid.substring(0, 8));
-            newUser.setEmail(firebaseUid + "@example.com"); // Consider a more robust way to handle email
+            newUser.setEmail(firebaseUid + "@example.com");
             return userRepository.save(newUser);
         });
     }

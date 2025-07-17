@@ -1,8 +1,8 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useUser } from '../contexts/UserContext';
+import { useUser } from '../features/player/UserContext';
 import App from '../App';
-import AuthPage from '../pages/AuthPage';
+import AuthPage from '../features/auth/AuthPage';
 
 function PrivateRoute({ children }) {
   const { user } = useUser();

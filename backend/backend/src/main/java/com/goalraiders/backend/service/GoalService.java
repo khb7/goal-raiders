@@ -5,6 +5,7 @@ import com.goalraiders.backend.GoalRepository;
 import com.goalraiders.backend.User;
 import com.goalraiders.backend.config.GameConfigProperties;
 import com.goalraiders.backend.dto.GoalDto;
+import com.goalraiders.backend.dto.mapper.GoalMapper;
 import com.goalraiders.backend.exception.InvalidInputException;
 import com.goalraiders.backend.exception.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,10 +27,13 @@ public class GoalService {
     @Autowired
     private GameConfigProperties gameConfigProperties;
 
+    @Autowired
+    private GoalMapper goalMapper;
+
     public List<GoalDto> getAllGoalsForCurrentUser() {
         User currentUser = userService.getCurrentUserEntity();
         List<Goal> goals = goalRepository.findByUserFirebaseUid(currentUser.getFirebaseUid());
-        return goals.stream().map(this::convertToDto).collect(Collectors.toList());
+        return goals.stream().map(goalMapper::toDto).collect(Collectors.toList());
     }
 
     public GoalDto getGoalById(Long id) {
@@ -37,19 +41,15 @@ public class GoalService {
         Goal goal = goalRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Goal not found with id " + id));
         if (!goal.getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
-            throw new ResourceNotFoundException("Goal not found with id " + id); // Or AccessDeniedException
+            throw new ResourceNotFoundException("Goal not found with id " + id);
         }
-        return convertToDto(goal);
+        return goalMapper.toDto(goal);
     }
 
     public GoalDto createGoal(GoalDto goalDto) {
         User currentUser = userService.getCurrentUserEntity();
-        Goal goal = new Goal();
-        goal.setTitle(goalDto.getTitle());
-        goal.setDescription(goalDto.getDescription());
-        goal.setStatus(goalDto.getStatus());
+        Goal goal = goalMapper.toEntity(goalDto);
         goal.setUser(currentUser);
-        goal.setDueDate(goalDto.getDueDate());
 
         int finalMaxHp = goalDto.getMaxHp() > 0 ? goalDto.getMaxHp() : gameConfigProperties.getBossHpMap().getOrDefault(goalDto.getStatus(), 100);
         goal.setMaxHp(finalMaxHp);
@@ -64,7 +64,7 @@ public class GoalService {
         }
 
         Goal savedGoal = goalRepository.save(goal);
-        return convertToDto(savedGoal);
+        return goalMapper.toDto(savedGoal);
     }
 
     public GoalDto updateGoal(Long id, GoalDto goalDto) {
@@ -73,15 +73,10 @@ public class GoalService {
                 .orElseThrow(() -> new ResourceNotFoundException("Goal not found with id " + id));
 
         if (!goalToUpdate.getUser().getId().equals(currentUser.getId())) {
-            throw new ResourceNotFoundException("Goal not found with id " + id); // Or AccessDeniedException
+            throw new ResourceNotFoundException("Goal not found with id " + id);
         }
 
-        goalToUpdate.setTitle(goalDto.getTitle());
-        goalToUpdate.setDescription(goalDto.getDescription());
-        goalToUpdate.setStatus(goalDto.getStatus());
-        goalToUpdate.setDueDate(goalDto.getDueDate());
-        goalToUpdate.setMaxHp(goalDto.getMaxHp());
-        goalToUpdate.setCurrentHp(goalDto.getCurrentHp());
+        goalMapper.toEntity(goalDto, goalToUpdate); // Update existing entity
 
         if (goalDto.getParentGoalId() != null) {
             Optional<Goal> parentGoal = goalRepository.findById(Long.parseLong(goalDto.getParentGoalId()));
@@ -94,7 +89,7 @@ public class GoalService {
         }
 
         Goal updatedGoal = goalRepository.save(goalToUpdate);
-        return convertToDto(updatedGoal);
+        return goalMapper.toDto(updatedGoal);
     }
 
     public void deleteGoal(Long id) {
@@ -103,7 +98,7 @@ public class GoalService {
                 .orElseThrow(() -> new ResourceNotFoundException("Goal not found with id " + id));
 
         if (!goal.getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
-            throw new ResourceNotFoundException("Goal not found with id " + id); // Or AccessDeniedException
+            throw new ResourceNotFoundException("Goal not found with id " + id);
         }
 
         goalRepository.delete(goal);
@@ -115,7 +110,7 @@ public class GoalService {
                 .orElseThrow(() -> new ResourceNotFoundException("Goal not found with id " + goalId));
 
         if (!goal.getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
-            throw new ResourceNotFoundException("Goal not found with id " + goalId); // Or AccessDeniedException
+            throw new ResourceNotFoundException("Goal not found with id " + goalId);
         }
 
         int damage = gameConfigProperties.getDifficultyDamageMap().getOrDefault(difficulty, 0);
@@ -123,20 +118,6 @@ public class GoalService {
         goal.setCurrentHp(Math.max(0, newHp));
 
         Goal updatedGoal = goalRepository.save(goal);
-        return convertToDto(updatedGoal);
-    }
-
-    private GoalDto convertToDto(Goal goal) {
-        GoalDto dto = new GoalDto();
-        dto.setId(goal.getId());
-        dto.setTitle(goal.getTitle());
-        dto.setDescription(goal.getDescription());
-        dto.setStatus(goal.getStatus());
-        dto.setUserId(goal.getUser() != null ? goal.getUser().getFirebaseUid() : null);
-        dto.setParentGoalId(goal.getParentGoal() != null ? String.valueOf(goal.getParentGoal().getId()) : null);
-        dto.setDueDate(goal.getDueDate());
-        dto.setMaxHp(goal.getMaxHp());
-        dto.setCurrentHp(goal.getCurrentHp());
-        return dto;
+        return goalMapper.toDto(updatedGoal);
     }
 }
