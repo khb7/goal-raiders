@@ -9,6 +9,10 @@ import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { getFunctions } from "firebase/functions";
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AuthPage from './pages/AuthPage';
+import { UserProvider, useUser } from './contexts/UserContext';
+import { BossProvider } from './features/bosses/BossContext';
+import { TaskProvider } from './features/tasks/TaskContext';
+import { GameProvider } from './features/game/GameContext';
 
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
@@ -27,38 +31,40 @@ export const functions = getFunctions(app);
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
 function PrivateRoute({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = React.useState(false);
-  const [loading, setLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setIsAuthenticated(!!user);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+  const { user, loading } = useUser();
 
   if (loading) {
     return <div>Loading...</div>; // Or a spinner
   }
 
-  return isAuthenticated ? children : <Navigate to="/auth" />;
+  return user ? children : <Navigate to="/auth" />;
 }
 
 root.render(
   <React.StrictMode>
     <BrowserRouter>
-      <Routes>
-        <Route path="/auth" element={<AuthPage />} />
-        <Route
-          path="/*"
-          element={
-            <PrivateRoute>
-              <App />
-            </PrivateRoute>
-          }
-        />
-      </Routes>
+      <UserProvider>
+        <BossProvider>
+          <TaskProvider>
+            <GameProvider>
+              <Routes>
+          <Route path="/auth" element={<AuthPage />} />
+          <Route
+            path="/*"
+            element={
+              <PrivateRoute>
+                <App />
+              </PrivateRoute>
+            }
+          />
+        </Route>
+        </Route>
+        </Route>
+        </Routes>
+        </GameProvider>
+        </TaskProvider>
+        </BossProvider>
+      </UserProvider>
     </BrowserRouter>
   </React.StrictMode>
 );
