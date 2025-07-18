@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
-import { useUser } from '../player/UserContext';
+import { useUser } from '../../contexts/UserContext';
 
 const BossContext = createContext(null);
 
@@ -50,9 +50,27 @@ export const BossProvider = ({ children }) => {
     bosses,
     currentBossId,
     setCurrentBossId,
-    addBoss: (bossData) => addBossMutation.mutate({ bossData, idToken }),
-    updateBoss: (bossId, bossData) => updateBossMutation.mutate({ bossId, bossData, idToken }),
-    deleteBoss: (bossId) => deleteBossMutation.mutate({ bossId, idToken }),
+    addBoss: (bossData) => {
+      if (!idToken) {
+        console.warn("Cannot add boss: idToken not available.");
+        return Promise.reject(new Error("idToken not available"));
+      }
+      return addBossMutation.mutateAsync({ bossData, idToken });
+    },
+    updateBoss: (bossId, bossData) => {
+      if (!idToken) {
+        console.warn("Cannot update boss: idToken not available.");
+        return Promise.reject(new Error("idToken not available"));
+      }
+      return updateBossMutation.mutateAsync({ bossId, bossData, idToken });
+    },
+    deleteBoss: (bossId) => {
+      if (!idToken) {
+        console.warn("Cannot delete boss: idToken not available.");
+        return Promise.reject(new Error("idToken not available"));
+      }
+      return deleteBossMutation.mutateAsync({ bossId, idToken });
+    },
     currentBoss: currentBossId ? bosses.find(b => b.id === currentBossId) : null,
     isLoading: addBossMutation.isLoading || updateBossMutation.isLoading || deleteBossMutation.isLoading,
   };

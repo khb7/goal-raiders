@@ -86,7 +86,7 @@ class TaskServiceTest {
         when(userService.getCurrentUserEntity()).thenReturn(currentUser);
         when(taskMapper.toDto(any(Task.class))).thenReturn(testTaskDto);
         when(taskMapper.toEntity(any(TaskDto.class))).thenReturn(testTask);
-        doNothing().when(taskMapper).toEntity(any(TaskDto.class), any(Task.class));
+        doNothing().when(taskMapper).updateTaskFromDto(any(TaskDto.class), any(Task.class));
 
         HashMap<String, Integer> damageMap = new HashMap<>();
         damageMap.put("Easy", 5);
@@ -235,7 +235,7 @@ class TaskServiceTest {
         assertEquals(updatedDto.getTitle(), result.getTitle());
         verify(taskRepository, times(1)).findById(1L);
         verify(taskRepository, times(1)).save(testTask);
-        verify(taskMapper, times(1)).toEntity(updatedDto, testTask);
+        verify(taskMapper, times(1)).updateTaskFromDto(updatedDto, testTask);
         verify(taskMapper, times(1)).toDto(testTask);
     }
 

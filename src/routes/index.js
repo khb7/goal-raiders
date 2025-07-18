@@ -1,15 +1,16 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useUser } from '../features/player/UserContext';
+import { useUser } from '../contexts/UserContext';
 import App from '../App';
 import AuthPage from '../features/auth/AuthPage';
 
 function PrivateRoute({ children }) {
-  const { user } = useUser();
+  const { user, idToken } = useUser(); // idToken also indicates readiness
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
-    if (user !== null) {
+    // Wait until the auth state is determined
+    if (user !== undefined) {
       setLoading(false);
     }
   }, [user]);
@@ -18,7 +19,7 @@ function PrivateRoute({ children }) {
     return <div>Loading...</div>; // Or a spinner
   }
 
-  return user ? children : <Navigate to="/auth" />;
+  return user && idToken ? children : <Navigate to="/auth" />;
 }
 
 const AppRoutes = () => {

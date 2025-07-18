@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { auth } from '../index';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import api from '../services/api';
+import api from '../lib/api';
 
 const UserContext = createContext(null);
 
@@ -34,7 +34,7 @@ export const UserProvider = ({ children }) => {
     if (userId && idToken) {
       try {
         console.log("Fetching user info from /api/user/me...");
-        const fetchedUser = await api.get('/user/me', idToken);
+        const fetchedUser = await api.get('/user/me', { idToken });
         setUserInfo(fetchedUser);
       } catch (error) {
         console.error("Error fetching user info:", error);

@@ -1,7 +1,7 @@
 import React, { createContext, useContext } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
-import { useUser } from '../player/UserContext';
+import { useUser } from '../../contexts/UserContext';
 
 const TaskContext = createContext(null);
 
@@ -41,10 +41,34 @@ export const TaskProvider = ({ children }) => {
 
   const value = {
     tasks,
-    addTask: (taskData) => addTaskMutation.mutate({ taskData, idToken }),
-    updateTask: (taskId, taskData) => updateTaskMutation.mutate({ taskId, taskData, idToken }),
-    deleteTask: (taskId) => deleteTaskMutation.mutate({ taskId, idToken }),
-    completeTask: (taskId) => completeTaskMutation.mutate({ taskId, idToken }),
+    addTask: (taskData) => {
+      if (!idToken) {
+        console.warn("Cannot add task: idToken not available.");
+        return Promise.reject(new Error("idToken not available"));
+      }
+      return addTaskMutation.mutateAsync({ taskData, idToken });
+    },
+    updateTask: (taskId, taskData) => {
+      if (!idToken) {
+        console.warn("Cannot update task: idToken not available.");
+        return Promise.reject(new Error("idToken not available"));
+      }
+      return updateTaskMutation.mutateAsync({ taskId, taskData, idToken });
+    },
+    deleteTask: (taskId) => {
+      if (!idToken) {
+        console.warn("Cannot delete task: idToken not available.");
+        return Promise.reject(new Error("idToken not available"));
+      }
+      return deleteTaskMutation.mutateAsync({ taskId, idToken });
+    },
+    completeTask: (taskId) => {
+      if (!idToken) {
+        console.warn("Cannot complete task: idToken not available.");
+        return Promise.reject(new Error("idToken not available"));
+      }
+      return completeTaskMutation.mutateAsync({ taskId, idToken });
+    },
     isLoading: addTaskMutation.isLoading || updateTaskMutation.isLoading || deleteTaskMutation.isLoading || completeTaskMutation.isLoading,
   };
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useUser } from '../UserContext';
+import { useUser } from '../../../contexts/UserContext';
 
 const PlayerInfoCard = () => {
   const { user, userInfo, signOutUser } = useUser();
@@ -11,9 +11,9 @@ const PlayerInfoCard = () => {
         {user && userInfo ? (
           <>
             <p><strong>Email:</strong> {user.email}</p>
-            <p><strong>Level:</strong> {userInfo.level}</p>
-            <p><strong>XP:</strong> {userInfo.experience} / 100</p>
-            <p><strong>HP:</strong> {userInfo.currentHp} / {userInfo.maxHp}</p>
+            <p><strong>Level:</strong> {userInfo?.level}</p>
+            <p><strong>XP:</strong> {userInfo?.experience} / 100</p>
+            <p><strong>HP:</strong> {userInfo?.currentHp} / {userInfo?.maxHp}</p>
             <button className="btn btn-outline-secondary btn-sm" onClick={signOutUser}>Logout</button>
           </>
         ) : (

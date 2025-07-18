@@ -76,7 +76,7 @@ public class GoalService {
             throw new ResourceNotFoundException("Goal not found with id " + id);
         }
 
-        goalMapper.toEntity(goalDto, goalToUpdate); // Update existing entity
+        goalMapper.updateGoalFromDto(goalDto, goalToUpdate); // Update existing entity
 
         if (goalDto.getParentGoalId() != null) {
             Optional<Goal> parentGoal = goalRepository.findById(Long.parseLong(goalDto.getParentGoalId()));

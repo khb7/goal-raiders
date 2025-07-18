@@ -1,10 +1,12 @@
+import { useState } from 'react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-import { useUser } from './features/player/UserContext';
+import { useUser } from './contexts/UserContext';
+import { GameConfigProvider } from './features/game/GameConfigContext';
 import { useBoss } from './features/bosses/BossContext';
 import { useTask } from './features/tasks/TaskContext';
-import { useGameConfig } from './features/game/GameConfigContext';
+
 import PlayerInfoCard from './features/player/components/PlayerInfoCard';
 import BossDisplay from './features/bosses/components/BossDisplay';
 import TaskList from './features/tasks/components/TaskList';
@@ -13,9 +15,16 @@ import EditBossModal from './features/bosses/components/EditBossModal';
 import EditTaskModal from './features/tasks/components/EditTaskModal';
 
 function App() {
-  // ... (hooks)
+  const [showAddBossModal, setShowAddBossModal] = useState(false);
+  const [showEditBossModal, setShowEditBossModal] = useState(false);
+  const [editingBoss, setEditingBoss] = useState(null);
+  const [showEditTaskModal, setShowEditTaskModal] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  const [takingDamage, setTakingDamage] = useState(false);
+
 
   const { 
+    currentBoss,
     addBoss: addBossContext, 
     updateBoss: updateBossContext, 
     deleteBoss: deleteBossContext, 
@@ -23,6 +32,7 @@ function App() {
   } = useBoss();
 
   const { 
+    tasks,
     completeTask: completeTaskContext, 
     deleteTask: deleteTaskContext, 
     addTask: addTaskContext, 
@@ -114,14 +124,69 @@ function App() {
 
   // ... (rest of the component)
 
+  const { user, idToken } = useUser();
+
   return (
-    <div className="container-fluid mt-3 app-main-background d-flex flex-column min-vh-100">
+    <GameConfigProvider idToken={idToken}>
+      <div className="container-fluid mt-3 app-main-background d-flex flex-column min-vh-100">
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
-      {/* ... (rest of the JSX) */}
+      <div className="row flex-grow-1">
+        <div className="col-md-4 col-lg-3">
+          <PlayerInfoCard />
+          <button className="btn btn-primary w-100 mt-3" onClick={() => setShowAddBossModal(true)}>
+            Add New Boss
+          </button>
+        </div>
+        <div className="col-md-8 col-lg-9">
+          <BossDisplay 
+            boss={currentBoss}
+            takingDamage={takingDamage} 
+            onEditBoss={() => setShowEditBossModal(true)} 
+          />
+          <TaskList 
+            tasks={tasks}
+            onEditTask={(task) => {
+              setEditingTask(task);
+              setShowEditTaskModal(true);
+            }}
+            onDeleteTask={handleDeleteTask}
+            onCompleteTask={handleCompleteTask}
+            onAddTask={() => {
+              setEditingTask(null);
+              setShowEditTaskModal(true);
+            }}
+          />
+        </div>
+      </div>
+
+      {showAddBossModal && (
+        <AddBossModal 
+          onClose={() => setShowAddBossModal(false)} 
+          onSave={handleAddBoss} 
+        />
+      )}
+
+      {showEditBossModal && editingBoss && (
+        <EditBossModal
+          boss={editingBoss}
+          onClose={() => setShowEditBossModal(false)}
+          onSave={handleEditBoss}
+          onDelete={handleDeleteBoss}
+        />
+      )}
+
+      {showEditTaskModal && (
+        <EditTaskModal
+          task={editingTask}
+          onClose={() => {
+            setShowEditTaskModal(false);
+            setEditingTask(null);
+          }}
+          onSave={handleSaveTask}
+        />
+      )}
     </div>
   );
 }
 
-
-
-
+export default App;

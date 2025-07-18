@@ -82,7 +82,7 @@ public class TaskService {
             throw new ResourceNotFoundException("Task not found with id " + id);
         }
 
-        taskMapper.toEntity(taskDto, taskToUpdate); // Update existing entity
+        taskMapper.updateTaskFromDto(taskDto, taskToUpdate); // Update existing entity
 
         if (taskDto.getGoalId() != null) {
             Optional<Goal> goal = goalRepository.findById(Long.parseLong(taskDto.getGoalId()));

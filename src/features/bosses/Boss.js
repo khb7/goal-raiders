@@ -1,5 +1,5 @@
 import React from 'react';
-import '../../../styles/Boss.css';
+import '../../styles/Boss.css';
 
 // ... (rest of Boss.js file is unchanged)
 

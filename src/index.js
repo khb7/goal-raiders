@@ -10,6 +10,10 @@ import { UserProvider, useUser } from './contexts/UserContext';
 import { getFunctions } from "firebase/functions";
 import { BrowserRouter } from 'react-router-dom';
 import AppRoutes from './routes';
+import { GameConfigProvider } from './features/game/GameConfigContext';
+import { BossProvider } from './features/bosses/BossContext';
+import { TaskProvider } from './features/tasks/TaskContext';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
@@ -26,12 +30,6 @@ export const db = getFirestore(app);
 export const functions = getFunctions(app);
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
-
-import { GameConfigProvider } from './contexts/GameConfigContext';
-import { BossProvider } from './contexts/BossContext';
-import { TaskProvider } from './features/tasks/TaskContext';
-
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const queryClient = new QueryClient();
 

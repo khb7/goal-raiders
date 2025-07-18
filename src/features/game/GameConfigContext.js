@@ -4,14 +4,14 @@ import api from '../../lib/api';
 
 const GameConfigContext = createContext(null);
 
-const fetchGameConfig = async () => {
-  return api.get('/config/game');
+const fetchGameConfig = async (idToken) => {
+  return api.get('/config/game', { idToken });
 };
 
-export const GameConfigProvider = ({ children }) => {
+export const GameConfigProvider = ({ children, idToken }) => {
   const { data: gameConfig, isSuccess: isGameConfigLoaded } = useQuery({
     queryKey: ['gameConfig'],
-    queryFn: fetchGameConfig,
+    queryFn: () => fetchGameConfig(idToken),
     staleTime: Infinity,
   });
 

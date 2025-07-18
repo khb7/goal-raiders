@@ -73,7 +73,7 @@ class GoalServiceTest {
         when(userService.getCurrentUserEntity()).thenReturn(currentUser);
         when(goalMapper.toDto(any(Goal.class))).thenReturn(testGoalDto);
         when(goalMapper.toEntity(any(GoalDto.class))).thenReturn(testGoal);
-        doNothing().when(goalMapper).toEntity(any(GoalDto.class), any(Goal.class));
+        doNothing().when(goalMapper).updateGoalFromDto(any(GoalDto.class), any(Goal.class));
 
         HashMap<String, Integer> bossHpMap = new HashMap<>();
         bossHpMap.put("Medium", 100);
@@ -193,7 +193,7 @@ class GoalServiceTest {
         assertEquals(updatedDto.getTitle(), result.getTitle());
         verify(goalRepository, times(1)).findById(1L);
         verify(goalRepository, times(1)).save(testGoal);
-        verify(goalMapper, times(1)).toEntity(updatedDto, testGoal);
+        verify(goalMapper, times(1)).updateGoalFromDto(updatedDto, testGoal);
         verify(goalMapper, times(1)).toDto(testGoal);
     }
 

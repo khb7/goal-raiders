@@ -2,9 +2,13 @@ package com.goalraiders.backend.dto.mapper;
 
 import com.goalraiders.backend.Task;
 import com.goalraiders.backend.dto.TaskDto;
+import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
+
+import org.mapstruct.MappingTarget;
+import org.mapstruct.NullValuePropertyMappingStrategy;
 
 @Mapper(componentModel = "spring")
 public interface TaskMapper {
@@ -20,4 +24,7 @@ public interface TaskMapper {
     @Mapping(target = "goal", ignore = true)
     @Mapping(target = "parentTask", ignore = true)
     Task toEntity(TaskDto taskDto);
+
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    void updateTaskFromDto(TaskDto taskDto, @MappingTarget Task task);
 }
