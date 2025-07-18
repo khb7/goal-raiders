@@ -8,6 +8,9 @@ const TaskList = () => {
   const { bosses, currentBossId, setCurrentBossId, toggleBossCollapse, collapsedBosses } = useBoss();
 
   const renderBosses = (bossList, allTasks, parentId = null, indent = 0) => {
+    console.log("Rendering Bosses and Tasks:");
+    console.log("Bosses:", bossList);
+    console.log("All Tasks:", allTasks);
     const unassignedTasks = allTasks.filter(task => task.goalId === null || task.goalId === undefined);
 
     return (
@@ -28,7 +31,8 @@ const TaskList = () => {
         {bossList
           .filter(boss => boss.parentGoalId === parentId)
           .map(boss => {
-            const bossTasks = allTasks.filter(task => task.goalId === boss.id);
+            const bossTasks = allTasks.filter(task => String(task.goalId) === String(boss.id));
+            console.log(`Tasks for boss ${boss.title} (${boss.id}):`, bossTasks);
             const isCollapsed = collapsedBosses[boss.id];
             return (
               <React.Fragment key={boss.id}>

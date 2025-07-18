@@ -18,6 +18,8 @@ import { useGame } from './features/game/GameContext';
 import './App.css';
 import { useNavigate } from 'react-router-dom';
 import Boss from './Boss';
+import AppHeader from './components/AppHeader';
+import DashboardSection from './components/DashboardSection';
 
 import { DIFFICULTY_DAMAGE_MAP, BOSS_DIFFICULTY_COLOR_MAP } from './utils/constants';
 
@@ -27,38 +29,8 @@ function App() {
   const { tasks, task, setTask, recurrenceDays, setRecurrenceDays, selectedDifficulty, setSelectedDifficulty, selectedParentTask, setSelectedParentTask, editingTaskId, setEditingTaskId, takingDamage, setTakingDamage, saveTask, toggleTask, editTask, deleteTask, loadTasks, renderTasks } = useTask();
   return (
     <div className="container-fluid mt-3 app-main-background d-flex flex-column min-vh-100">
-      {/* Header */}
-      <div className="row mb-3 app-header-container">
-        <div className="col-md-12 p-3 d-flex justify-content-between align-items-center">
-          <h1 className="h3 mb-0">Goal Raiders</h1>
-          <div>
-          </div>
-        </div>
-      </div>
-          {currentBoss && (
-            <div className="boss-status-container">
-              <div className="d-flex align-items-center">
-                <span className="me-2">Current Boss: <strong>{currentBoss.title}</strong></span>
-                <div className="progress" style={{ width: '150px', height: '20px' }}>
-                  <div
-                    className="progress-bar bg-success"
-                    role="progressbar"
-                    style={{ width: `${(currentBoss.currentHp / currentBoss.maxHp) * 100}%` }}
-                    aria-valuenow={currentBoss.currentHp}
-                    aria-valuemin="0"
-                    aria-valuemax={currentBoss.maxHp}
-                  ></div>
-                </div>
-                <span className="ms-2">{currentBoss.currentHp} / {currentBoss.maxHp} HP</span>
-              </div>
-            </div>
-          )}
-      <div className="p-4 mb-4 rounded-3 dashboard-header">
-        <div className="container-fluid">
-          <h1 className="display-5 fw-bold">Dashboard</h1>
-          <p className="col-md-8 fs-4">오늘의 목표를 달성하고 보스를 물리치세요!</p>
-        </div>
-      </div>
+      <AppHeader />
+      <DashboardSection />
 
       <div className="row">
         {/* Left Menu Bar */}
@@ -93,14 +65,10 @@ function App() {
           {currentBoss && (
             <BossDisplay />
           )}
+          <TaskList />
 
           {/* Add Task Form */}
           <TaskInput />
-
-          
-
-          
-        <TaskList />
         </div>
 
         {/* Right Panel */}

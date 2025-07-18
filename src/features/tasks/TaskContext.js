@@ -253,13 +253,12 @@ export const TaskProvider = ({ children }) => {
           >
             {task.title} ({task.difficulty} - {DIFFICULTY_DAMAGE_MAP[task.difficulty]} HP)
             <div>
-              <button
-                className={`btn ${task.completed ? 'btn-warning' : 'btn-success'}`}
-                onClick={() => toggleTask(task.id)}
-                disabled={task.completed}
-              >
-                {task.completed ? 'Completed' : 'Complete Task'}
-              </button>
+              <input
+                type="checkbox"
+                className="form-check-input me-2"
+                checked={task.completed}
+                onChange={() => toggleTask(task.id)}
+              />
               <button
                 className="btn btn-info ms-2"
                 onClick={() => editTask(task.id)}

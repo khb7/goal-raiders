@@ -134,16 +134,23 @@ public class TaskService {
             throw new ResourceNotFoundException("Task not found with id " + taskId); // Or AccessDeniedException
         }
 
-        if (task.isCompleted()) {
-            if (task.getRecurrenceDays() > 0) {
-                LocalDate today = LocalDate.now();
-                LocalDate lastCompleted = task.getLastCompleted();
-                if (lastCompleted == null || lastCompleted.plusDays(task.getRecurrenceDays()).isBefore(today) || lastCompleted.plusDays(task.getRecurrenceDays()).isEqual(today)) {
-                    task.setCompleted(false);
-                    task.setLastCompleted(null);
+        if (task.isCompleted()) { // If task is already completed, uncomplete it
+            task.setCompleted(false);
+            task.setLastCompleted(null);
+
+            if (task.getGoal() != null) {
+                Goal goal = task.getGoal();
+                int damage = gameConfigProperties.getDifficultyDamageMap().getOrDefault(task.getDifficulty(), 0);
+                int newHp = goal.getCurrentHp() + damage; // Restore HP
+                goal.setCurrentHp(Math.min(goal.getMaxHp(), newHp)); // Ensure HP doesn't exceed max
+
+                if (goal.getCurrentHp() > 0 && goal.isDefeated()) { // If boss was defeated and now has HP
+                    goal.setDefeated(false);
+                    // Consider reversing XP if needed, but for now, just HP and defeated status
                 }
+                goalRepository.save(goal);
             }
-        } else {
+        } else { // If task is not completed, complete it
             task.setCompleted(true);
             task.setLastCompleted(LocalDate.now());
 
@@ -158,7 +165,6 @@ public class TaskService {
                     int xpReward = gameConfigProperties.getBossXpRewardMap().getOrDefault(goal.getStatus(), 0);
                     userService.addExperience(currentUser.getFirebaseUid(), xpReward);
                 }
-
                 goalRepository.save(goal);
             }
         }
