@@ -25,10 +25,6 @@ function App() {
   const { user, userId, handleSignOut } = useUser();
   const { bosses, currentBossId, setCurrentBossId, newBossName, setNewBossName, selectedBossDifficulty, setSelectedBossDifficulty, newBossDueDate, setNewBossDueDate, selectedParentBoss, setSelectedParentBoss, showAddBossModal, setShowAddBossModal, showEditBossModal, setShowEditBossModal, editingBossId, setEditingBossId, editingBossName, setEditingBossName, editingBossDifficulty, setEditingBossDifficulty, editingBossDueDate, setEditingBossDueDate, editingParentBoss, setEditingParentBoss, addBoss, editBoss, deleteBoss, currentBoss, toggleBossCollapse, collapsedBosses, loadBosses, gameConfig } = useBoss();
   const { tasks, task, setTask, recurrenceDays, setRecurrenceDays, selectedDifficulty, setSelectedDifficulty, selectedParentTask, setSelectedParentTask, editingTaskId, setEditingTaskId, takingDamage, setTakingDamage, saveTask, toggleTask, editTask, deleteTask, loadTasks, renderTasks } = useTask();
-  const { userInfo, playerHp, isVictory, resetGame } = useGame();
-
-  const isVictory = currentBoss && currentBoss.currentHp <= 0;
-
   return (
     <div className="container-fluid mt-3 app-main-background d-flex flex-column min-vh-100">
       {/* Header */}
@@ -36,7 +32,6 @@ function App() {
         <div className="col-md-12 p-3 d-flex justify-content-between align-items-center">
           <h1 className="h3 mb-0">Goal Raiders</h1>
           <div>
-            <button className="btn btn-outline-primary btn-sm" onClick={resetGame}>New Game</button>
           </div>
         </div>
       </div>

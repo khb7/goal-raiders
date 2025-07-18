@@ -48,23 +48,20 @@ root.render(
           <TaskProvider>
             <GameProvider>
               <Routes>
-          <Route path="/auth" element={<AuthPage />} />
-          <Route
-            path="/*"
-            element={
-              <PrivateRoute>
-                <App />
-              </PrivateRoute>
-            }
-          />
-        </Route>
-        </Route>
-        </Route>
-        </Routes>
-        </GameProvider>
+              <Route path="/auth" element={<AuthPage />} />
+              <Route
+                path="/*"
+                element={
+                  <PrivateRoute>
+                    <App />
+                  </PrivateRoute>
+                }
+              />
+            </Routes>
+          </GameProvider>
         </TaskProvider>
-        </BossProvider>
-      </UserProvider>
+      </BossProvider>
+    </UserProvider>
     </BrowserRouter>
   </React.StrictMode>
 );

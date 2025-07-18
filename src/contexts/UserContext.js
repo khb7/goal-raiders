@@ -8,16 +8,20 @@ const UserContext = createContext(null);
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [userId, setUserId] = useState('');
+  const [idToken, setIdToken] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
         setUserId(currentUser.uid);
+        const token = await currentUser.getIdToken();
+        setIdToken(token);
       } else {
         setUserId('');
+        setIdToken(null);
       }
       setLoading(false);
     });
@@ -35,7 +39,7 @@ export const UserProvider = ({ children }) => {
   }, [navigate]);
 
   return (
-    <UserContext.Provider value={{ user, userId, loading, handleSignOut }}>
+    <UserContext.Provider value={{ user, userId, loading, idToken, handleSignOut }}>
       {children}
     </UserContext.Provider>
   );
