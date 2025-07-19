@@ -13,7 +13,7 @@ import TaskList from './features/tasks/components/TaskList';
 import PlayerInfoCard from './features/player/components/PlayerInfoCard';
 import { useGame } from './features/game/GameContext';
 
-
+// 보스 체력 차는 양 맞게 하고 보스 추가 오류 고치기
 
 import './App.css';
 import { useNavigate } from 'react-router-dom';

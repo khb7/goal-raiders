@@ -24,8 +24,10 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        // H2 콘솔 및 /api/hello 경로는 필터링하지 않음
-        if (request.getRequestURI().startsWith("/h2-console") || request.getRequestURI().equals("/api/hello")) {
+        // H2 콘솔, /api/hello, /api/config/game 경로는 필터링하지 않음
+        if (request.getRequestURI().startsWith("/h2-console") ||
+            request.getRequestURI().equals("/api/hello") ||
+            request.getRequestURI().equals("/api/config/game")) {
             filterChain.doFilter(request, response);
             return;
         }

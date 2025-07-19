@@ -5,7 +5,8 @@ import { DIFFICULTY_DAMAGE_MAP, BOSS_DIFFICULTY_COLOR_MAP } from '../../utils/co
 const BossContext = createContext(null);
 
 export const BossProvider = ({ children }) => {
-  const { userId, idToken } = useUser(); // idToken도 UserContext에서 가져와야 함
+  const { userId, idToken, updateExperience } = useUser();
+  const [isBossDefeated, setIsBossDefeated] = useState(false);
   const [bosses, setBosses] = useState([]);
   const [currentBossId, setCurrentBossId] = useState(null);
   const [newBossName, setNewBossName] = useState('');
@@ -32,6 +33,7 @@ export const BossProvider = ({ children }) => {
     difficultyDamageMap: {},
     bossHpMap: {},
   });
+  const [gameConfigLoading, setGameConfigLoading] = useState(true);
 
   useEffect(() => {
     const fetchGameConfig = async () => {
@@ -43,11 +45,18 @@ export const BossProvider = ({ children }) => {
             difficultyDamageMap: config.difficultyDamageMap || {},
             bossHpMap: config.bossHpMap || {},
           });
+          console.log("Game config loaded:", config); // 기존 로그
+          console.log("Game config after setGameConfig:", { // 추가
+            difficultyDamageMap: config.difficultyDamageMap || {},
+            bossHpMap: config.bossHpMap || {},
+          });
         } else {
           console.error("Failed to fetch game config");
         }
       } catch (error) {
         console.error("Error fetching game config:", error);
+      } finally {
+        setGameConfigLoading(false);
       }
     };
     fetchGameConfig();
@@ -67,15 +76,25 @@ export const BossProvider = ({ children }) => {
           const previouslySelectedBoss = fetchedBosses.find(boss => boss.id === currentBossId);
           if (previouslySelectedBoss && previouslySelectedBoss.currentHp > 0) {
             setCurrentBossId(previouslySelectedBoss.id);
+            setIsBossDefeated(false); // 활성 보스가 선택되면 isBossDefeated를 false로 설정
+          } else if (previouslySelectedBoss && previouslySelectedBoss.currentHp <= 0) {
+            // 보스가 쓰러졌을 때
+            // defeatBoss(previouslySelectedBoss.id); // 여기서 다시 호출할 필요 없음
+            setCurrentBossId(null); // 쓰러진 보스는 선택 해제
+            setIsBossDefeated(true); // 쓰러진 보스 상태 유지
           } else if (fetchedBosses.length > 0) {
             const firstActiveBoss = fetchedBosses.find(boss => boss.currentHp > 0);
             if (firstActiveBoss) {
               setCurrentBossId(firstActiveBoss.id);
+              setIsBossDefeated(false); // 활성 보스가 선택되면 isBossDefeated를 false로 설정
             } else {
-              setCurrentBossId(fetchedBosses[0].id);
+              // 모든 보스가 쓰러졌을 경우
+              setCurrentBossId(null);
+              setIsBossDefeated(true); // 모든 보스가 쓰러졌으므로 isBossDefeated를 true로 설정
             }
           } else {
             setCurrentBossId(null);
+            setIsBossDefeated(false); // 보스가 없으면 isBossDefeated를 false로 설정
           }
         } else {
           console.error("Failed to fetch bosses:", bossesResponse.status, await bossesResponse.text());
@@ -87,6 +106,7 @@ export const BossProvider = ({ children }) => {
   }, [userId, idToken, currentBossId]);
 
   const addBoss = useCallback(async () => {
+    console.log("addBoss called. gameConfigLoading:", gameConfigLoading, "gameConfig:", gameConfig); // 추가
     if (!newBossName) {
       alert('보스 이름을 입력해주세요.');
       return;
@@ -95,8 +115,15 @@ export const BossProvider = ({ children }) => {
       alert('로그인 후 보스를 추가할 수 있습니다.');
       return;
     }
+    if (gameConfigLoading) {
+      alert('게임 설정이 아직 로드되지 않았습니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
 
-    const maxHp = gameConfig.bossHpMap[selectedBossDifficulty];
+    console.log("Before maxHp calculation. gameConfig:", gameConfig, "bossHpMap:", gameConfig.bossHpMap); // 기존 로그
+    console.log("selectedBossDifficulty:", selectedBossDifficulty); // 추가
+    const maxHp = gameConfig.bossHpMap[selectedBossDifficulty.replace(' ', '-')];
+    console.log("Calculated maxHp:", maxHp); // 추가
     if (!maxHp) {
       alert('게임 설정이 아직 로드되지 않았습니다. 잠시 후 다시 시도해주세요.');
       return;
@@ -223,6 +250,31 @@ export const BossProvider = ({ children }) => {
     }
   }, [editingBossId, userId, idToken, loadBosses]);
 
+  const defeatBoss = useCallback(async (bossId) => {
+    try {
+      // 보스 상태를 '쓰러짐'으로 업데이트 (백엔드 API 호출)
+      const response = await fetch(`http://localhost:8080/api/goals/${bossId}/defeat`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
+
+      if (response.ok) {
+        console.log(`Boss ${bossId} defeated!`);
+        setIsBossDefeated(true);
+        updateExperience(100); // 플레이어 경험치 획득
+        setCurrentBossId(null); // 쓰러진 보스는 선택 해제
+        await loadBosses(); // 보스 목록 새로고침
+      } else {
+        const errorText = await response.text();
+        console.error("Failed to defeat boss:", errorText);
+      }
+    } catch (error) {
+      console.error("Error defeating boss:", error);
+    }
+  }, [idToken, updateExperience, loadBosses]);
+
   useEffect(() => {
     if (userId && idToken) {
       loadBosses();
@@ -267,6 +319,8 @@ export const BossProvider = ({ children }) => {
         collapsedBosses,
         loadBosses,
         gameConfig,
+        isBossDefeated,
+        defeatBoss,
       }}
     >
       {children}

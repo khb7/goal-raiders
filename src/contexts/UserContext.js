@@ -10,6 +10,7 @@ export const UserProvider = ({ children }) => {
   const [userId, setUserId] = useState('');
   const [idToken, setIdToken] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [userInfo, setUserInfo] = useState({ experience: 0 });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -38,8 +39,15 @@ export const UserProvider = ({ children }) => {
     }
   }, [navigate]);
 
+  const updateExperience = useCallback((amount) => {
+    setUserInfo(prevInfo => ({
+      ...prevInfo,
+      experience: prevInfo.experience + amount
+    }));
+  }, []);
+
   return (
-    <UserContext.Provider value={{ user, userId, loading, idToken, handleSignOut }}>
+    <UserContext.Provider value={{ user, userId, loading, idToken, handleSignOut, userInfo, updateExperience }}>
       {children}
     </UserContext.Provider>
   );
