@@ -15,7 +15,7 @@ import './App.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 const App = () => {
-  const { idToken } = useUser();
+  const { idToken, user } = useUser();
   const { setShowAddBossModal } = useBoss();
 
   return (
@@ -30,8 +30,17 @@ const App = () => {
             element={(
               <div className="row">
                 {/* Left Menu Bar */}
-                <div className="col-md-3 sidebar-container">
+                <div className="col-12 col-md-3 sidebar-container">
                   <div className="card">
+                    <div className="card-body">
+                      <h4 className="card-title">Player Info</h4>
+                      <ul className="list-group list-group-flush">
+                        <li className="list-group-item">Level: {user?.level}</li>
+                        <li className="list-group-item">Experience: {user?.experience}</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div className="card mt-3">
                     <div className="card-body">
                       <h4 className="card-title">Menu</h4>
                       <ul className="list-group list-group-flush">
@@ -53,12 +62,12 @@ const App = () => {
                 </div>
 
                 {/* Main Content */}
-                <div className="col-md-6 main-content-container">
+                <div className="col-12 col-md-6 main-content-container">
                   <DashboardSection />
                 </div>
 
                 {/* Right Panel */}
-                <div className="col-md-3">
+                <div className="col-12 col-md-3">
                   <PlayerInfoCard />
                 </div>
               </div>

@@ -18,7 +18,7 @@ export const GameProvider = ({ children }) => {
   const loadUserInfo = useCallback(async () => {
     if (userId && idToken) {
       try {
-        const userResponse = await fetch('http://localhost:8080/api/user/me', {
+        const userResponse = await fetch('http://localhost:8080/api/users/me', {
             headers: {
                 'Authorization': `Bearer ${idToken}`,
             },

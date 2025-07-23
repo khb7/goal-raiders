@@ -65,12 +65,18 @@ html, body {
 .card {
   background-color: rgba(0, 0, 0, 0.2) !important; /* 반투명한 어두운 배경 */
   color: var(--text-color) !important;
+  margin-bottom: 1rem; /* 카드 아래 여백 추가 */
+}
+
+.card-body {
+  padding: 1.25rem; /* 카드 내부 패딩 조정 */
 }
 
 .list-group-item {
   background-color: transparent !important;
   color: var(--text-color) !important;
   border-color: rgba(255, 255, 255, 0.1) !important;
+  padding: 0.75rem 1.25rem; /* 목록 항목 내부 패딩 조정 */
 }
 
 .list-group-item.active {
@@ -118,6 +124,32 @@ html, body {
   background-color: var(--secondary-color) !important;
   border-color: var(--secondary-color) !important;
   color: var(--text-color) !important;
+}
+
+.custom-progress-bar .progress-bar {
+  border-radius: 5px; /* 둥근 모서리 */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* 그림자 효과 */
+  transition: width 0.5s ease-in-out; /* 부드러운 애니메이션 */
+}
+
+.custom-progress-bar.xp .progress-bar {
+  background-color: var(--primary-color) !important; /* XP 바 색상 */
+}
+
+.custom-progress-bar.hp .progress-bar {
+  background-color: #dc3545 !important; /* HP 바 색상 (빨간색) */
+}
+
+.progress {
+  height: 20px; /* 프로그레스 바 높이 */
+  background-color: rgba(255, 255, 255, 0.1); /* 바 배경색 */
+  border-radius: 5px; /* 둥근 모서리 */
+  overflow: hidden; /* 내용이 넘칠 경우 숨김 */
+}
+
+.progress-bar {
+  font-weight: bold;
+  color: var(--text-color-dark); /* 텍스트 색상 */
 }
 
 .progress-bar.bg-success {
