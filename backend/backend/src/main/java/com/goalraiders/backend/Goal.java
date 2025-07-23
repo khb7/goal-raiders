@@ -28,6 +28,9 @@ public class Goal {
     @OneToMany(mappedBy = "parentGoal", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Goal> subGoals = new ArrayList<>();
 
+    @OneToMany(mappedBy = "goal", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Task> tasks = new ArrayList<>();
+
     private LocalDate dueDate;
 
     private int maxHp;
@@ -96,6 +99,14 @@ public class Goal {
 
     public void setSubGoals(List<Goal> subGoals) {
         this.subGoals = subGoals;
+    }
+
+    public List<Task> getTasks() {
+        return tasks;
+    }
+
+    public void setTasks(List<Task> tasks) {
+        this.tasks = tasks;
     }
 
     public LocalDate getDueDate() {

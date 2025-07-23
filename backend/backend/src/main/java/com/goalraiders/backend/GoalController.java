@@ -3,10 +3,12 @@ package com.goalraiders.backend;
 import com.goalraiders.backend.dto.GoalDto;
 import com.goalraiders.backend.service.GoalService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/goals")
@@ -16,7 +18,7 @@ public class GoalController {
     private GoalService goalService;
 
     @GetMapping
-    public ResponseEntity<List<GoalDto>> getAllGoalsForCurrentUser() {
+    public ResponseEntity<List<GoalDto>> getAllGoals() {
         return ResponseEntity.ok(goalService.getAllGoalsForCurrentUser());
     }
 
@@ -27,7 +29,7 @@ public class GoalController {
 
     @PostMapping
     public ResponseEntity<GoalDto> createGoal(@RequestBody GoalDto goalDto) {
-        return ResponseEntity.ok(goalService.createGoal(goalDto));
+        return new ResponseEntity<>(goalService.createGoal(goalDto), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
@@ -41,8 +43,19 @@ public class GoalController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{goalId}/damage")
-    public ResponseEntity<GoalDto> applyDamageToGoal(@PathVariable Long goalId, @RequestParam String difficulty) {
-        return ResponseEntity.ok(goalService.applyDamageToGoal(goalId, difficulty));
+    @PostMapping("/{id}/damage")
+    public ResponseEntity<GoalDto> applyDamage(@PathVariable Long id, @RequestBody Map<String, String> payload) {
+        String difficulty = payload.get("difficulty");
+        return ResponseEntity.ok(goalService.applyDamageToGoal(id, difficulty));
+    }
+
+    @PostMapping("/{id}/defeat")
+    public ResponseEntity<GoalDto> defeatGoal(@PathVariable Long id) {
+        return ResponseEntity.ok(goalService.defeatGoal(id));
+    }
+
+    @PostMapping("/{id}/revive")
+    public ResponseEntity<GoalDto> reviveGoal(@PathVariable Long id) {
+        return ResponseEntity.ok(goalService.reviveGoal(id));
     }
 }

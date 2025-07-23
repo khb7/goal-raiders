@@ -250,9 +250,31 @@ export const BossProvider = ({ children }) => {
     }
   }, [editingBossId, userId, idToken, loadBosses]);
 
+  const reviveBoss = useCallback(async (bossId) => {
+    try {
+      // NOTE: This requires a new backend endpoint to revive the boss.
+      const response = await fetch(`http://localhost:8080/api/goals/${bossId}/revive`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
+
+      if (response.ok) {
+        console.log(`Boss ${bossId} revived!`);
+        await loadBosses(); // Reload bosses to get the updated state.
+        setIsBossDefeated(false);
+      } else {
+        const errorText = await response.text();
+        console.error("Failed to revive boss:", errorText);
+      }
+    } catch (error) {
+      console.error("Error reviving boss:", error);
+    }
+  }, [idToken, loadBosses]);
+
   const defeatBoss = useCallback(async (bossId) => {
     try {
-      // 보스 상태를 '쓰러짐'으로 업데이트 (백엔드 API 호출)
       const response = await fetch(`http://localhost:8080/api/goals/${bossId}/defeat`, {
         method: 'POST',
         headers: {
@@ -262,10 +284,17 @@ export const BossProvider = ({ children }) => {
 
       if (response.ok) {
         console.log(`Boss ${bossId} defeated!`);
+        
+        // Update local state to show defeated status immediately
+        setBosses(prev => prev.map(b => b.id === bossId ? { ...b, currentHp: 0 } : b));
         setIsBossDefeated(true);
-        updateExperience(100); // 플레이어 경험치 획득
-        setCurrentBossId(null); // 쓰러진 보스는 선택 해제
-        await loadBosses(); // 보스 목록 새로고침
+        updateExperience(100);
+
+        // Revive the boss after a delay
+        setTimeout(() => {
+          reviveBoss(bossId);
+        }, 3000); // 3-second delay
+
       } else {
         const errorText = await response.text();
         console.error("Failed to defeat boss:", errorText);
@@ -273,7 +302,7 @@ export const BossProvider = ({ children }) => {
     } catch (error) {
       console.error("Error defeating boss:", error);
     }
-  }, [idToken, updateExperience, loadBosses]);
+  }, [idToken, updateExperience, reviveBoss]);
 
   useEffect(() => {
     if (userId && idToken) {

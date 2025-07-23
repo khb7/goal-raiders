@@ -76,13 +76,9 @@ export const TaskProvider = ({ children }) => {
         }
 
         if (response.ok) {
-          const savedTask = await response.json();
-          if (editingTaskId) {
-            setTasks(tasks.map(t => (t.id === editingTaskId ? savedTask : t)));
-            setEditingTaskId(null);
-          } else {
-            setTasks([...tasks, savedTask]);
-          }
+          await loadTasks(); // Reload tasks
+          await loadBosses(); // Reload bosses to reflect HP changes
+          setEditingTaskId(null);
         } else {
           const errorText = await response.text();
           console.error("Error saving task:", errorText);
@@ -98,7 +94,7 @@ export const TaskProvider = ({ children }) => {
       setSelectedDifficulty('Medium');
       setSelectedParentTask('');
     }
-  }, [task, userId, idToken, recurrenceDays, selectedDifficulty, selectedParentTask, currentBossId, editingTaskId, tasks]);
+  }, [task, userId, idToken, recurrenceDays, selectedDifficulty, selectedParentTask, currentBossId, editingTaskId, loadTasks, loadBosses]);
 
   const toggleTask = useCallback(async (id) => {
     if (!idToken) {
@@ -118,15 +114,8 @@ export const TaskProvider = ({ children }) => {
       });
 
       if (response.ok) {
-        const updatedTask = await response.json();
-        setTasks(prevTasks => prevTasks.map(t =>
-          t.id === updatedTask.id
-            ? { ...updatedTask, name: updatedTask.title }
-            : t
-        ));
-        if (updatedTask.goalId) {
-          loadBosses();
-        }
+        await loadTasks(); // Reload tasks to get the latest state
+        await loadBosses(); // Reload bosses to reflect HP changes
       } else {
         const errorText = await response.text();
         alert(`Failed to complete task: ${errorText}`);
@@ -137,7 +126,7 @@ export const TaskProvider = ({ children }) => {
     } finally {
       setTimeout(() => setTakingDamage(false), 500);
     }
-  }, [idToken, loadBosses]);
+  }, [idToken, loadTasks, loadBosses]);
 
   const editTask = useCallback(async (id) => {
     try {

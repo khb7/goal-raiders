@@ -60,9 +60,7 @@ html, body {
   /* 배경색을 부모 요소인 app-main-background에서 상속받도록 제거 */
 }
 
-.app-header-container, .app-header-container h1, .app-header-container span {
-  color: var(--text-color) !important;
-}
+/* .app-header-container 스타일은 Bootstrap navbar 클래스로 대체됨 */
 
 .card {
   background-color: rgba(0, 0, 0, 0.2) !important; /* 반투명한 어두운 배경 */

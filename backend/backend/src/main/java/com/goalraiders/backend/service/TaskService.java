@@ -54,20 +54,24 @@ public class TaskService {
         task.setDifficulty(taskDto.getDifficulty());
         task.setUser(currentUser);
 
-        if (taskDto.getGoalId() != null) {
-            Optional<Goal> goal = goalRepository.findById(Long.parseLong(taskDto.getGoalId()));
-            if (goal.isEmpty() || !goal.get().getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
-                throw new InvalidInputException("Invalid goal id: " + taskDto.getGoalId());
+        if (taskDto.getGoalId() != null && !taskDto.getGoalId().isEmpty()) {
+            Goal goal = goalRepository.findById(Long.parseLong(taskDto.getGoalId()))
+                    .orElseThrow(() -> new InvalidInputException("Invalid goal id: " + taskDto.getGoalId()));
+
+            if (!goal.getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
+                throw new ResourceNotFoundException("Goal not found with id " + goal.getId());
             }
-            task.setGoal(goal.get());
+            task.setGoal(goal);
         }
 
-        if (taskDto.getParentTaskId() != null) {
-            Optional<Task> parentTask = taskRepository.findById(Long.parseLong(taskDto.getParentTaskId()));
-            if (parentTask.isEmpty() || !parentTask.get().getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
-                throw new InvalidInputException("Invalid parent task id: " + taskDto.getParentTaskId());
+        if (taskDto.getParentTaskId() != null && !taskDto.getParentTaskId().isEmpty()) {
+            Task parentTask = taskRepository.findById(Long.parseLong(taskDto.getParentTaskId()))
+                    .orElseThrow(() -> new InvalidInputException("Invalid parent task id: " + taskDto.getParentTaskId()));
+
+            if (!parentTask.getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
+                throw new ResourceNotFoundException("Parent task not found with id " + parentTask.getId());
             }
-            task.setParentTask(parentTask.get());
+            task.setParentTask(parentTask);
         }
 
         Task savedTask = taskRepository.save(task);
@@ -125,6 +129,8 @@ public class TaskService {
         taskRepository.delete(task);
     }
 
+    @Transactional
+    @Transactional
     public TaskDto completeTask(Long taskId) {
         User currentUser = userService.getCurrentUserEntity();
         Task task = taskRepository.findById(taskId)
@@ -140,7 +146,7 @@ public class TaskService {
 
             if (task.getGoal() != null) {
                 Goal goal = task.getGoal();
-                int damage = gameConfigProperties.getDifficultyDamageMap().getOrDefault(task.getDifficulty(), 0);
+                int damage = gameConfigProperties.getDifficultyDamageMap().getOrDefault(task.getDifficulty().replace(" ", "-"), 0);
                 int newHp = goal.getCurrentHp() + damage; // Restore HP
                 goal.setCurrentHp(Math.min(goal.getMaxHp(), newHp)); // Ensure HP doesn't exceed max
 
@@ -156,14 +162,14 @@ public class TaskService {
 
             if (task.getGoal() != null) {
                 Goal goal = task.getGoal();
-                int damage = gameConfigProperties.getDifficultyDamageMap().getOrDefault(task.getDifficulty(), 0);
+                int damage = gameConfigProperties.getDifficultyDamageMap().getOrDefault(task.getDifficulty().replace(" ", "-"), 0);
                 int newHp = goal.getCurrentHp() - damage;
                 goal.setCurrentHp(Math.max(0, newHp));
 
                 if (goal.getCurrentHp() <= 0 && !goal.isDefeated()) {
                     goal.setDefeated(true);
                     int xpReward = gameConfigProperties.getBossXpRewardMap().getOrDefault(goal.getStatus(), 0);
-                    userService.addExperience(currentUser.getFirebaseUid(), xpReward);
+                    userService.addExperience(xpReward);
                 }
                 goalRepository.save(goal);
             }

@@ -1,86 +1,80 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import { Modal, Button, Form } from 'react-bootstrap'; // Import Modal, Button, Form
-import { useUser } from './contexts/UserContext';
-import { useBoss } from './features/bosses/BossContext';
-import AddBossModal from './features/bosses/components/AddBossModal';
-import EditBossModal from './features/bosses/components/EditBossModal';
-import BossDisplay from './features/bosses/components/BossDisplay';
-import BossSelector from './features/bosses/components/BossSelector';
-import { useTask } from './features/tasks/TaskContext';
-import TaskInput from './features/tasks/components/TaskInput';
-import TaskList from './features/tasks/components/TaskList';
-import PlayerInfoCard from './features/player/components/PlayerInfoCard';
-import { useGame } from './features/game/GameContext';
-
-// 보스 체력 차는 양 맞게 하고 보스 추가 오류 고치기
-
-import './App.css';
-import { useNavigate } from 'react-router-dom';
-import Boss from './Boss';
+import React from 'react';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { UserProvider, useUser } from './contexts/UserContext';
+import { BossProvider } from './features/bosses/BossContext';
+import { TaskProvider } from './features/tasks/TaskContext';
 import AppHeader from './components/AppHeader';
 import DashboardSection from './components/DashboardSection';
+import AuthPage from './pages/AuthPage';
+import AddBossModal from './features/bosses/components/AddBossModal';
+import EditBossModal from './features/bosses/components/EditBossModal';
+import PlayerInfoCard from './features/player/components/PlayerInfoCard'; // Import PlayerInfoCard
+import HeroSection from './components/HeroSection'; // Import HeroSection
+import './App.css';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
-import { DIFFICULTY_DAMAGE_MAP, BOSS_DIFFICULTY_COLOR_MAP } from './utils/constants';
+const App = () => {
+  const { idToken } = useUser();
 
-function App() {
-  const { user, userId, handleSignOut } = useUser();
-  const { bosses, currentBossId, setCurrentBossId, newBossName, setNewBossName, selectedBossDifficulty, setSelectedBossDifficulty, newBossDueDate, setNewBossDueDate, selectedParentBoss, setSelectedParentBoss, showAddBossModal, setShowAddBossModal, showEditBossModal, setShowEditBossModal, editingBossId, setEditingBossId, editingBossName, setEditingBossName, editingBossDifficulty, setEditingBossDifficulty, editingBossDueDate, setEditingBossDueDate, editingParentBoss, setEditingParentBoss, addBoss, editBoss, deleteBoss, currentBoss, toggleBossCollapse, collapsedBosses, loadBosses, gameConfig } = useBoss();
-  const { tasks, task, setTask, recurrenceDays, setRecurrenceDays, selectedDifficulty, setSelectedDifficulty, selectedParentTask, setSelectedParentTask, editingTaskId, setEditingTaskId, takingDamage, setTakingDamage, saveTask, toggleTask, editTask, deleteTask, loadTasks, renderTasks } = useTask();
   return (
-    <div className="container-fluid mt-3 app-main-background d-flex flex-column min-vh-100">
+    <div className="App app-main-background d-flex flex-column min-vh-100">
       <AppHeader />
-      <DashboardSection />
+      <HeroSection />
+      <main className="container-fluid flex-grow-1">
+        <Routes>
+          <Route path="/auth" element={<AuthPage />} />
+          <Route
+            path="/"
+            element={idToken ? (
+              <div className="row">
+                {/* Left Menu Bar */}
+                <div className="col-md-3 sidebar-container">
+                  <div className="card">
+                    <div className="card-body">
+                      <h4 className="card-title">Menu</h4>
+                      <ul className="list-group list-group-flush">
+                        <li className="list-group-item">Dashboard</li>
+                        <li className="list-group-item">Settings</li>
+                        <li className="list-group-item">About</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
 
-      <div className="row">
-        {/* Left Menu Bar */}
-        <div className="col-md-3 sidebar-container">
-          <div className="card">
-            <div className="card-body">
-              <h4 className="card-title">Menu</h4>
-              <ul className="list-group list-group-flush">
-                <li className="list-group-item">Dashboard</li>
-                <li className="list-group-item">Settings</li>
-                <li className="list-group-item">About</li>
-              </ul>
-            </div>
-          </div>
-        </div>
+                {/* Main Content */}
+                <div className="col-md-6 main-content-container">
+                  <DashboardSection />
+                </div>
 
-        {/* Main Content */}
-        <div className="col-md-6 main-content-container">
-          <div className="mb-4 d-flex justify-content-between align-items-center">
-              <Button variant="primary" onClick={() => setShowAddBossModal(true)}>
-                  Add New Boss
-              </Button>
-              <BossSelector />
-          </div>
-
-          {/* Add New Boss Modal */}
-          <AddBossModal />
-
-          {/* Edit Current Boss Modal */}
-          <EditBossModal />
-
-          {currentBoss && (
-            <BossDisplay />
-          )}
-          <TaskList />
-
-          {/* Add Task Form */}
-          <TaskInput />
-        </div>
-
-        {/* Right Panel */}
-        <div className="col-md-3">
-          <PlayerInfoCard />
-        </div>
-      </div>
+                {/* Right Panel */}
+                <div className="col-md-3">
+                  <PlayerInfoCard />
+                </div>
+              </div>
+            ) : (
+              <Navigate to="/auth" replace />
+            )}
+          />
+        </Routes>
+      </main>
+      {/* Modals are rendered here, outside the main content flow but within the App component */}
+      <AddBossModal />
+      <EditBossModal />
     </div>
   );
-}
+};
 
-export default App;
+const AppWrapper = () => (
+  <UserProvider>
+    <BossProvider>
+      <TaskProvider>
+        <App />
+      </TaskProvider>
+    </BossProvider>
+  </UserProvider>
+);
+
+export default AppWrapper;
 
 
 

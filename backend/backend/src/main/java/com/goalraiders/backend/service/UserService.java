@@ -42,18 +42,19 @@ public class UserService {
         });
     }
 
-    public void addExperience(String firebaseUid, int experience) {
-        User user = userRepository.findByFirebaseUid(firebaseUid).orElseThrow(() -> new RuntimeException("User not found"));
-        int newExperience = user.getExperience() + experience;
-        int newLevel = user.getLevel();
+    public UserDto addExperience(int experience) {
+        User currentUser = getCurrentUserEntity();
+        int newExperience = currentUser.getExperience() + experience;
+        int newLevel = currentUser.getLevel();
 
-        if (newExperience >= 100) {
+        while (newExperience >= 100) { // Loop to handle multiple level-ups
             newLevel += 1;
             newExperience -= 100;
         }
 
-        user.setExperience(newExperience);
-        user.setLevel(newLevel);
-        userRepository.save(user);
+        currentUser.setExperience(newExperience);
+        currentUser.setLevel(newLevel);
+        userRepository.save(currentUser);
+        return new UserDto(currentUser.getId(), currentUser.getUsername(), currentUser.getEmail(), currentUser.getLevel(), currentUser.getExperience());
     }
 }

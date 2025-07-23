@@ -126,6 +126,39 @@ public class GoalService {
         return convertToDto(updatedGoal);
     }
 
+    public GoalDto defeatGoal(Long goalId) {
+        User currentUser = userService.getCurrentUserEntity();
+        Goal goal = goalRepository.findById(goalId)
+            .orElseThrow(() -> new ResourceNotFoundException("Goal not found with id " + goalId));
+
+        if (!goal.getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
+            throw new ResourceNotFoundException("Goal not found with id " + goalId);
+        }
+
+        goal.setCurrentHp(0);
+        // Grant experience to the user
+        userService.addExperience(100); // Grant 100 XP
+
+        Goal updatedGoal = goalRepository.save(goal);
+        return convertToDto(updatedGoal);
+    }
+
+    @Transactional
+    @Transactional
+    public GoalDto reviveGoal(Long goalId) {
+        User currentUser = userService.getCurrentUserEntity();
+        Goal goal = goalRepository.findById(goalId)
+            .orElseThrow(() -> new ResourceNotFoundException("Goal not found with id " + goalId));
+
+        if (!goal.getUser().getFirebaseUid().equals(currentUser.getFirebaseUid())) {
+            throw new ResourceNotFoundException("Goal not found with id " + goalId);
+        }
+
+        goal.setCurrentHp(goal.getMaxHp()); // Restore HP to max
+        Goal updatedGoal = goalRepository.save(goal);
+        return convertToDto(updatedGoal);
+    }
+
     private GoalDto convertToDto(Goal goal) {
         GoalDto dto = new GoalDto();
         dto.setId(goal.getId());

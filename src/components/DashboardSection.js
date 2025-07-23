@@ -1,14 +1,27 @@
 import React from 'react';
+import BossList from '../features/bosses/components/BossList';
+import TaskList from '../features/tasks/components/TaskList';
+import BossDisplay from '../features/bosses/components/BossDisplay';
+import TaskInput from '../features/tasks/components/TaskInput';
 
-function DashboardSection() {
+const DashboardSection = () => {
   return (
-    <div className="p-4 mb-4 rounded-3 dashboard-header">
-      <div className="container-fluid">
-        <h1 className="display-5 fw-bold">Dashboard</h1>
-        <p className="col-md-8 fs-4">오늘의 목표를 달성하고 보스를 물리치세요!</p>
+    <div className="container-fluid p-0">
+      <div className="row g-0">
+        {/* Left Column for Boss Display and Task Input */}
+        <div className="col-md-6 d-flex flex-column">
+          <BossDisplay className="w-100" />
+          <TaskInput className="w-100" />
+        </div>
+
+        {/* Right Column for Boss and Task Lists */}
+        <div className="col-md-6 d-flex flex-column">
+          <BossList className="w-100" />
+          <TaskList className="w-100" />
+        </div>
       </div>
     </div>
   );
-}
+};
 
 export default DashboardSection;
