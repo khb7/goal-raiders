@@ -18,7 +18,7 @@ export const UserProvider = ({ children }) => {
       setUser(currentUser);
       if (currentUser) {
         setUserId(currentUser.uid);
-        const token = await currentUser.getIdToken();
+        const token = await currentUser.getIdToken(true); // Force refresh token
         setIdToken(token);
       } else {
         setUserId('');

@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
-import { BossProvider } from './features/bosses/BossContext';
+import { BossProvider, useBoss } from './features/bosses/BossContext';
 import { TaskProvider } from './features/tasks/TaskContext';
 import AppHeader from './components/AppHeader';
 import DashboardSection from './components/DashboardSection';
@@ -9,12 +9,14 @@ import AuthPage from './pages/AuthPage';
 import AddBossModal from './features/bosses/components/AddBossModal';
 import EditBossModal from './features/bosses/components/EditBossModal';
 import PlayerInfoCard from './features/player/components/PlayerInfoCard'; // Import PlayerInfoCard
+import BossList from './features/bosses/components/BossList'; // Import BossList
 import HeroSection from './components/HeroSection'; // Import HeroSection
 import './App.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 const App = () => {
   const { idToken } = useUser();
+  const { setShowAddBossModal } = useBoss();
 
   return (
     <div className="App app-main-background d-flex flex-column min-vh-100">
@@ -25,7 +27,7 @@ const App = () => {
           <Route path="/auth" element={<AuthPage />} />
           <Route
             path="/"
-            element={idToken ? (
+            element={(
               <div className="row">
                 {/* Left Menu Bar */}
                 <div className="col-md-3 sidebar-container">
@@ -39,6 +41,15 @@ const App = () => {
                       </ul>
                     </div>
                   </div>
+                  {/* Add New Boss Button */}
+                  <div className="card mt-3">
+                    <div className="card-body">
+                      <button className="btn btn-primary w-100" onClick={() => setShowAddBossModal(true)}>
+                        Add New Boss
+                      </button>
+                    </div>
+                  </div>
+                  <BossList /> {/* Move BossList to the sidebar */}
                 </div>
 
                 {/* Main Content */}
@@ -51,8 +62,6 @@ const App = () => {
                   <PlayerInfoCard />
                 </div>
               </div>
-            ) : (
-              <Navigate to="/auth" replace />
             )}
           />
         </Routes>
