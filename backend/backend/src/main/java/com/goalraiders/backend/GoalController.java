@@ -2,6 +2,7 @@ package com.goalraiders.backend;
 
 import com.goalraiders.backend.dto.GoalDto;
 import com.goalraiders.backend.service.GoalService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,8 +19,11 @@ public class GoalController {
     private GoalService goalService;
 
     @GetMapping
-    public ResponseEntity<List<GoalDto>> getAllGoals() {
-        return ResponseEntity.ok(goalService.getAllGoalsForCurrentUser());
+    public ResponseEntity<List<GoalDto>> getAllGoals(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id,asc") String[] sort) {
+        return ResponseEntity.ok(goalService.getAllGoalsForCurrentUser(page, size, sort));
     }
 
     @GetMapping("/{id}")
@@ -28,12 +32,12 @@ public class GoalController {
     }
 
     @PostMapping
-    public ResponseEntity<GoalDto> createGoal(@RequestBody GoalDto goalDto) {
+    public ResponseEntity<GoalDto> createGoal(@Valid @RequestBody GoalDto goalDto) {
         return new ResponseEntity<>(goalService.createGoal(goalDto), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<GoalDto> updateGoal(@PathVariable Long id, @RequestBody GoalDto goalDto) {
+    public ResponseEntity<GoalDto> updateGoal(@PathVariable Long id, @Valid @RequestBody GoalDto goalDto) {
         return ResponseEntity.ok(goalService.updateGoal(id, goalDto));
     }
 

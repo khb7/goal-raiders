@@ -6,7 +6,12 @@ import com.goalraiders.backend.dto.TaskDto;
 import com.goalraiders.backend.exception.InvalidInputException;
 import com.goalraiders.backend.exception.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -28,10 +33,17 @@ public class TaskService {
     @Autowired
     private GameConfigProperties gameConfigProperties;
 
-    public List<TaskDto> getAllTasksForCurrentUser() {
+    public List<TaskDto> getAllTasksForCurrentUser(int page, int size, String[] sort) {
         User currentUser = userService.getCurrentUserEntity();
-        List<Task> tasks = taskRepository.findByUserFirebaseUid(currentUser.getFirebaseUid());
-        return tasks.stream().map(this::convertToDto).collect(Collectors.toList());
+
+        Sort sorting = Sort.by(Sort.Direction.ASC, "id"); // Default sort
+        if (sort != null && sort.length > 0) {
+            sorting = Sort.by(Sort.Direction.fromString(sort[1]), sort[0]);
+        }
+
+        Pageable pageable = PageRequest.of(page, size, sorting);
+        Page<Task> tasksPage = taskRepository.findByUserFirebaseUid(currentUser.getFirebaseUid(), pageable);
+        return tasksPage.getContent().stream().map(this::convertToDto).collect(Collectors.toList());
     }
 
     public TaskDto getTaskById(Long id) {
@@ -129,7 +141,6 @@ public class TaskService {
         taskRepository.delete(task);
     }
 
-    @Transactional
     @Transactional
     public TaskDto completeTask(Long taskId) {
         User currentUser = userService.getCurrentUserEntity();

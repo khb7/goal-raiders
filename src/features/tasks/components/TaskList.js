@@ -1,9 +1,10 @@
 import React from 'react';
 import { useTask } from '../TaskContext';
 import { useBoss } from '../../bosses/BossContext';
+import { Button } from 'react-bootstrap';
 
 const TaskList = () => {
-  const { tasks, renderTasks } = useTask();
+  const { tasks, renderTasks, setShowAddTaskModal } = useTask();
   const { currentBossId } = useBoss();
 
   // Filter tasks to only show those for the currently selected boss
@@ -14,7 +15,14 @@ const TaskList = () => {
   return (
     <div className="card mb-4">
       <div className="card-body">
-        <h5 className="card-title">Tasks for Current Boss</h5>
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h5 className="card-title mb-0">Tasks for Current Boss</h5>
+          {currentBossId && (
+            <Button variant="primary" size="sm" onClick={() => setShowAddTaskModal(true)}>
+              Add Task
+            </Button>
+          )}
+        </div>
         {currentBossId ? (
           <ul className="list-group list-group-flush">
             {filteredTasks.length > 0 ? (

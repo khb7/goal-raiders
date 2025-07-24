@@ -1,10 +1,17 @@
 package com.goalraiders.backend.dto;
 
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotEmpty;
 import java.util.Map;
 
 public class GameConfigDto {
 
+    @NotNull(message = "Difficulty damage map cannot be null")
+    @NotEmpty(message = "Difficulty damage map cannot be empty")
     private Map<String, Integer> difficultyDamageMap;
+
+    @NotNull(message = "Boss HP map cannot be null")
+    @NotEmpty(message = "Boss HP map cannot be empty")
     private Map<String, Integer> bossHpMap;
 
     public GameConfigDto(Map<String, Integer> difficultyDamageMap, Map<String, Integer> bossHpMap) {

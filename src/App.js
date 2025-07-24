@@ -8,6 +8,7 @@ import DashboardSection from './components/DashboardSection';
 import AuthPage from './pages/AuthPage';
 import AddBossModal from './features/bosses/components/AddBossModal';
 import EditBossModal from './features/bosses/components/EditBossModal';
+import AddTaskModal from './features/tasks/components/AddTaskModal'; // Import AddTaskModal
 import PlayerInfoCard from './features/player/components/PlayerInfoCard'; // Import PlayerInfoCard
 import BossList from './features/bosses/components/BossList'; // Import BossList
 import HeroSection from './components/HeroSection'; // Import HeroSection
@@ -78,6 +79,7 @@ const App = () => {
       {/* Modals are rendered here, outside the main content flow but within the App component */}
       <AddBossModal />
       <EditBossModal />
+      <AddTaskModal />
     </div>
   );
 };

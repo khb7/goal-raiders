@@ -15,6 +15,7 @@ export const TaskProvider = ({ children }) => {
   const [selectedParentTask, setSelectedParentTask] = useState('');
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [takingDamage, setTakingDamage] = useState(false);
+  const [showAddTaskModal, setShowAddTaskModal] = useState(false);
 
   const loadTasks = useCallback(async () => {
     if (userId && idToken) {
@@ -289,6 +290,8 @@ export const TaskProvider = ({ children }) => {
         deleteTask,
         loadTasks,
         renderTasks,
+        showAddTaskModal,
+        setShowAddTaskModal,
       }}
     >
       {children}

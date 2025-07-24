@@ -1,16 +1,25 @@
 package com.goalraiders.backend.dto;
 
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
 import java.time.LocalDate;
 
 public class TaskDto {
     private Long id;
+    @NotBlank(message = "Title cannot be blank")
+    @Size(max = 255, message = "Title cannot exceed 255 characters")
     private String title;
     private boolean completed;
     private String goalId;
     private String parentTaskId;
+    @NotBlank(message = "User ID cannot be blank")
     private String userId;
+    @Min(value = 0, message = "Recurrence days cannot be negative")
     private int recurrenceDays;
     private LocalDate lastCompleted;
+    @NotBlank(message = "Difficulty cannot be blank")
     private String difficulty;
 
     // Getters and Setters

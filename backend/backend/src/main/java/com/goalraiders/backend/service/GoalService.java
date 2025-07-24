@@ -8,7 +8,12 @@ import com.goalraiders.backend.dto.GoalDto;
 import com.goalraiders.backend.exception.InvalidInputException;
 import com.goalraiders.backend.exception.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,10 +31,17 @@ public class GoalService {
     @Autowired
     private GameConfigProperties gameConfigProperties;
 
-    public List<GoalDto> getAllGoalsForCurrentUser() {
+    public List<GoalDto> getAllGoalsForCurrentUser(int page, int size, String[] sort) {
         User currentUser = userService.getCurrentUserEntity();
-        List<Goal> goals = goalRepository.findByUserFirebaseUid(currentUser.getFirebaseUid());
-        return goals.stream().map(this::convertToDto).collect(Collectors.toList());
+
+        Sort sorting = Sort.by(Sort.Direction.ASC, "id"); // Default sort
+        if (sort != null && sort.length > 0) {
+            sorting = Sort.by(Sort.Direction.fromString(sort[1]), sort[0]);
+        }
+
+        Pageable pageable = PageRequest.of(page, size, sorting);
+        Page<Goal> goalsPage = goalRepository.findByUserFirebaseUid(currentUser.getFirebaseUid(), pageable);
+        return goalsPage.getContent().stream().map(this::convertToDto).collect(Collectors.toList());
     }
 
     public GoalDto getGoalById(Long id) {
@@ -143,7 +155,6 @@ public class GoalService {
         return convertToDto(updatedGoal);
     }
 
-    @Transactional
     @Transactional
     public GoalDto reviveGoal(Long goalId) {
         User currentUser = userService.getCurrentUserEntity();
